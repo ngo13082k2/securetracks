@@ -2,12 +2,10 @@ package org.example.securetracks.config;
 
 
 import org.example.securetracks.filter.JwtAuthenticationFilter;
-import org.example.securetracks.service.CustomUserDetailsService;
+import org.example.securetracks.service.implement.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -42,7 +40,8 @@ public class SecurityConfig {
         http
                 .csrf().disable()
                 .authorizeHttpRequests()
-                .requestMatchers("/api/auth/**").permitAll() // Cho phép truy cập không cần auth
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/master-data/**").hasAnyAuthority("ROLE_MEMBER")
                 .anyRequest().authenticated()
                 .and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)

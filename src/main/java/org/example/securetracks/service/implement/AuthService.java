@@ -1,4 +1,4 @@
-package org.example.securetracks.service;
+package org.example.securetracks.service.implement;
 
 
 import org.example.securetracks.model.User;
@@ -73,6 +73,10 @@ public class AuthService {
         if (userRepository.findByEmail(request.getEmail()).isPresent()){
             throw new RuntimeException("Email already exists");
         }
+        if (userRepository.findByPhone(request.getEmail()).isPresent()){
+            throw new RuntimeException("Phone already exists");
+        }
+
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 

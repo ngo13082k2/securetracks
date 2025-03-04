@@ -1,15 +1,11 @@
 package org.example.securetracks.controller;
 
 
-import org.example.securetracks.model.User;
 import org.example.securetracks.repository.UserRepository;
 import org.example.securetracks.request.AuthRequest;
 import org.example.securetracks.response.AuthResponse;
-import org.example.securetracks.service.AuthService;
-import org.example.securetracks.util.JwtUtil;
+import org.example.securetracks.service.implement.AuthService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
