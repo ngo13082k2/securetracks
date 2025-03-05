@@ -4,18 +4,21 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.example.securetracks.dto.DeliveryDto;
 import org.example.securetracks.dto.MasterDataDto;
+import org.example.securetracks.model.Delivery;
 import org.example.securetracks.model.MasterData;
+import org.example.securetracks.model.MasterDataDelivery;
 import org.example.securetracks.model.enums.CalculationUnit;
+import org.example.securetracks.repository.DeliveryRepository;
+import org.example.securetracks.repository.MasterDataDeliveryRepository;
 import org.example.securetracks.repository.MasterDataRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.io.InputStream;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,6 +26,10 @@ public class ExcelService {
 
     @Autowired
     private MasterDataRepository masterDataRepository;
+    @Autowired
+    private DeliveryRepository deliveryRepository;
+    @Autowired
+    private MasterDataDeliveryRepository masterDataDeliveryRepository;
 
     public void importExcel(MultipartFile file) throws IOException {
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
@@ -85,40 +92,82 @@ public class ExcelService {
             return 0;
         }
     }
-//    public List<DeliveryDto> importDeliveries(MultipartFile file) throws IOException {
-//        List<DeliveryDto> deliveries = new ArrayList<>();
-//
-//        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
-//            Sheet sheet = workbook.getSheetAt(0);
-//            for (Row row : sheet) {
-//                if (row.getRowNum() == 0) continue; // Bỏ qua dòng tiêu đề (header)
-//
-//                // Lấy danh sách ID từ file Excel
-//                List<Long> masterDataIds = Arrays.stream(row.getCell(6).getStringCellValue().split(","))
-//                        .map(Long::parseLong)
-//                        .collect(Collectors.toList());
-//
-//                // Tìm các MasterData theo ID trong database
-//                List<MasterDataDto> masterDataDtos = masterDataRepository.findAllById(masterDataIds).stream()
-//                        .map(masterData -> new MasterDataDto(masterData.getItem(), masterData.getName(),
-//                                masterData.getSpec(), masterData.getPer(),
-//                                masterData.getCalculationUnit()))
-//                        .collect(Collectors.toList());
-//
-//                DeliveryDto delivery = DeliveryDto.builder()
-////                        .quantity((int) row.getCell(0).getNumericCellValue())
-//                        .calculationUnit(CalculationUnit.valueOf(row.getCell(1).getStringCellValue().toUpperCase()))
-//                        .deliveryDate(row.getCell(2).getLocalDateTimeCellValue().toLocalDate())
-//                        .batch(row.getCell(3).getStringCellValue())
-//                        .manufacturingDate(row.getCell(4).getLocalDateTimeCellValue().toLocalDate())
-//                        .expireDate(row.getCell(5).getLocalDateTimeCellValue().toLocalDate())
-//                        .masterDataItems(masterDataDtos)
-//                        .build();
-//
-//                deliveries.add(delivery);
-//            }
-//        }
-//
-//        return deliveries;
-//    }
+    public void importFromExcelDelivery(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(inputStream)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+            Iterator<Row> rowIterator = sheet.iterator();
+            if (!rowIterator.hasNext()) {
+                throw new RuntimeException("File Excel không có dữ liệu!");
+            }
+            rowIterator.next(); // Bỏ qua dòng tiêu đề
+
+            List<MasterDataDelivery> masterDataDeliveries = new ArrayList<>();
+            int totalQuantity = 0;
+            Delivery delivery = null;
+
+            while (rowIterator.hasNext()) {
+                Row row = rowIterator.next();
+
+                if (delivery == null) {
+                    delivery = new Delivery();
+                    delivery.setCalculationUnit(CalculationUnit.valueOf(getCellValueDelivery(row.getCell(0))));
+                    delivery.setDeliveryDate(LocalDate.parse(getCellValueDelivery(row.getCell(1))));
+                    delivery.setBatch(getCellValueDelivery(row.getCell(2)));
+                    delivery.setManufacturingDate(LocalDate.parse(getCellValueDelivery(row.getCell(3))));
+                    delivery.setExpireDate(LocalDate.parse(getCellValueDelivery(row.getCell(4))));
+                    delivery = deliveryRepository.save(delivery);
+                }
+
+                Long itemId = Long.parseLong(getCellValueDelivery(row.getCell(5))); // Chuyển từ String sang Long
+                int quantity = Integer.parseInt(getCellValueDelivery(row.getCell(6))); // Chuyển từ String sang int
+
+                MasterData masterData = masterDataRepository.findById(itemId)
+                        .orElseThrow(() -> new IllegalArgumentException("MasterData không tồn tại: " + itemId));
+
+                MasterDataDelivery masterDataDelivery = MasterDataDelivery.builder()
+                        .delivery(delivery)
+                        .masterData(masterData)
+                        .quantity(quantity)
+                        .build();
+
+                masterDataDeliveries.add(masterDataDelivery);
+                totalQuantity += quantity;
+            }
+
+
+            // Cập nhật tổng số lượng trong Delivery
+            if (delivery != null) {
+                delivery.setQuantity(totalQuantity);
+                deliveryRepository.save(delivery);
+                masterDataDeliveryRepository.saveAll(masterDataDeliveries);
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException("Lỗi khi đọc file Excel", e);
+        }
+    }
+    private String getCellValueDelivery(Cell cell) {
+        if (cell == null) return "";
+
+        switch (cell.getCellType()) {
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getLocalDateTimeCellValue().toLocalDate().toString();
+                }
+                return String.valueOf((long) cell.getNumericCellValue());
+            case STRING:
+                return cell.getStringCellValue().trim();
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            case BLANK:
+                return "";
+            default:
+                return "UNKNOWN";
+        }
+    }
+
 }

@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +20,7 @@ import java.util.Map;
 public class DeliveryController {
     private final DeliveryService deliveryService;
     private final ExcelService excelService;
+
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody DeliveryDto dto) {
@@ -33,16 +36,24 @@ public class DeliveryController {
             ));
         }
     }
-//    @PostMapping("/import-excel")
-//    public ResponseEntity<?> importDelivery(@RequestParam("file") MultipartFile file) {
-//        try {
-//            List<DeliveryDto> deliveries = excelService.importDeliveries(file);
-//            List<DeliveryDto> savedDeliveries = deliveryService.saveAll(deliveries);
-//            return ResponseEntity.ok(Map.of("message", "Import thành công!", "data", savedDeliveries));
-//        } catch (Exception e) {
-//            return ResponseEntity.badRequest().body(Map.of("message", "Lỗi import: " + e.getMessage()));
-//        }
-//    }
+    @PostMapping("/import")
+    public ResponseEntity<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file) {
+        Map<String, Object> response = new HashMap<>();
+
+        if (!file.getContentType().equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+            response.put("message", "File không hợp lệ! Chỉ chấp nhận định dạng .xlsx.");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        try {
+            excelService.importFromExcelDelivery(file);
+            response.put("message", "Tải lên và nhập dữ liệu thành công!");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("message", "Lỗi xử lý file: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
 
 
 
