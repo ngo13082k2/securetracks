@@ -47,7 +47,7 @@ public class MasterDataController {
 
     // Lấy dữ liệu theo item
     @GetMapping("/{item}")
-    public ResponseEntity<Map<String, Object>> getByItem(@PathVariable Integer item) {
+    public ResponseEntity<Map<String, Object>> getByItem(@PathVariable Long item) {
         MasterDataDto data = masterDataService.getByItem(item);
         Map<String, Object> response = new HashMap<>();
         response.put("message", data != null ? "Tìm thấy dữ liệu!" : "Không tìm thấy dữ liệu!");
@@ -57,7 +57,7 @@ public class MasterDataController {
 
     // Cập nhật dữ liệu theo item
     @PutMapping("/{item}")
-    public ResponseEntity<Map<String, Object>> update(@PathVariable Integer item, @RequestBody MasterDataDto dto) {
+    public ResponseEntity<Map<String, Object>> update(@PathVariable Long item, @RequestBody MasterDataDto dto) {
         MasterDataDto updatedData = masterDataService.update(item, dto);
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Cập nhật dữ liệu thành công!");
@@ -67,7 +67,7 @@ public class MasterDataController {
 
     // Xóa dữ liệu theo item
     @DeleteMapping("/{item}")
-    public ResponseEntity<Map<String, Object>> delete(@PathVariable Integer item) {
+    public ResponseEntity<Map<String, Object>> delete(@PathVariable Long item) {
         masterDataService.delete(item);
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Xóa dữ liệu thành công!");

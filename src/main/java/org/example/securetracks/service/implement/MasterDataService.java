@@ -29,22 +29,22 @@ public class MasterDataService implements IMasterDataService {
                 .collect(Collectors.toList());
     }
 
-    public MasterDataDto getByItem(Integer item) {
-        MasterData data = masterDataRepository.findById(Integer.valueOf(item))
+    public MasterDataDto getByItem(Long item) {
+        MasterData data = masterDataRepository.findById(item)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu"));
         return mapToDto(data);
     }
 
     public MasterDataDto create(MasterDataDto dto) {
-        if (masterDataRepository.existsById(Integer.valueOf(dto.getItem()))) {
+        if (masterDataRepository.existsById((dto.getItem()))) {
             throw new RuntimeException("Item đã tồn tại");
         }
         MasterData entity = mapToEntity(dto);
         return mapToDto(masterDataRepository.save(entity));
     }
 
-    public MasterDataDto update(Integer item, MasterDataDto dto) {
-        MasterData existing = masterDataRepository.findById(Integer.valueOf(item))
+    public MasterDataDto update(Long item, MasterDataDto dto) {
+        MasterData existing = masterDataRepository.findById(item)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu"));
 
         existing.setName(dto.getName());
@@ -55,8 +55,8 @@ public class MasterDataService implements IMasterDataService {
         return mapToDto(masterDataRepository.save(existing));
     }
 
-    public void delete(Integer item) {
-        masterDataRepository.deleteById(Integer.valueOf(item));
+    public void delete(Long item) {
+        masterDataRepository.deleteById(item);
     }
     public List<MasterData> importExcel(MultipartFile file) throws IOException {
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
@@ -67,7 +67,7 @@ public class MasterDataService implements IMasterDataService {
             if (row.getRowNum() == 0) continue;
 
             MasterData data = MasterData.builder()
-                    .item(Integer.valueOf(row.getCell(0).getStringCellValue()))
+                    .item(Long.valueOf(row.getCell(0).getStringCellValue()))
                     .name(row.getCell(1).getStringCellValue())
                     .spec(Integer.valueOf(row.getCell(2).getStringCellValue()))
                     .per(Integer.valueOf(row.getCell(3).getStringCellValue()))
@@ -83,7 +83,7 @@ public class MasterDataService implements IMasterDataService {
 
     private MasterDataDto mapToDto(MasterData data) {
         return MasterDataDto.builder()
-                .item(String.valueOf(data.getItem()))
+                .item(data.getItem())
                 .name(data.getName())
                 .spec(data.getSpec())
                 .per(data.getPer())
@@ -93,7 +93,7 @@ public class MasterDataService implements IMasterDataService {
 
     private MasterData mapToEntity(MasterDataDto dto) {
         return MasterData.builder()
-                .item(Integer.valueOf(dto.getItem()))
+                .item(dto.getItem())
                 .name(dto.getName())
                 .spec(dto.getSpec())
                 .per(dto.getPer())

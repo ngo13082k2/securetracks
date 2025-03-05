@@ -3,6 +3,10 @@ package org.example.securetracks.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 @Entity
 @Table(name = "master_data")
 @Getter
@@ -13,7 +17,7 @@ import lombok.*;
 public class MasterData {
 
     @Id
-    private Integer item;
+    private Long item;
 
     private String name;
     private Integer spec;
@@ -21,4 +25,7 @@ public class MasterData {
 
     @Column(name = "calculation_unit")
     private String calculationUnit;
+    @OneToMany(mappedBy = "masterData", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<MasterDataDelivery> deliveries = new HashSet<>();
+
 }

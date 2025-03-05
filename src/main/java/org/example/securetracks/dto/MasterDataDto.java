@@ -1,6 +1,7 @@
 package org.example.securetracks.dto;
 
 import lombok.*;
+import org.example.securetracks.model.enums.CalculationUnit;
 
 @Getter
 @Setter
@@ -8,9 +9,10 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MasterDataDto {
-    private String item;
+    private Long item;
     private String name;
     private Integer spec;
     private Integer per;
     private String calculationUnit;
+
 }

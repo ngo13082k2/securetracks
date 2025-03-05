@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface MasterDataRepository extends JpaRepository<MasterData, Integer> {
-    Optional<MasterData> findByItem(Integer item);
+public interface MasterDataRepository extends JpaRepository<MasterData, Long> {
+    Optional<MasterData> findByItem(Long item);
 }

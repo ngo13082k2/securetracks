@@ -9,9 +9,9 @@ import java.util.List;
 
 public interface IMasterDataService {
     List<MasterDataDto> getAll();
-    MasterDataDto getByItem(Integer item);
+    MasterDataDto getByItem(Long item);
     MasterDataDto create(MasterDataDto dto);
-    MasterDataDto update(Integer item, MasterDataDto dto);
-    void delete(Integer item);
+    MasterDataDto update(Long item, MasterDataDto dto);
+    void delete(Long item);
     List<MasterData> importExcel(MultipartFile file) throws IOException;
 }
