@@ -3,6 +3,8 @@ package org.example.securetracks.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "delivery_detail")
 @Getter
@@ -21,4 +23,6 @@ public class DeliveryDetail {
     private MasterDataDelivery masterDataDelivery;
 
     private int totalBottles;
+    @OneToMany(mappedBy = "deliveryDetail", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BottleQrCode> bottleQrCodes;
 }
