@@ -43,9 +43,6 @@ public class DeliveryService {
                 .quantity(totalQuantity)
                 .calculationUnit(dto.getCalculationUnit())
                 .deliveryDate(dto.getDeliveryDate())
-                .batch(dto.getBatch())
-                .manufacturingDate(dto.getManufacturingDate())
-                .expireDate(dto.getExpireDate())
                 .build();
 
         // Chuyển đổi Set<MasterData> thành List<MasterDataDelivery>
@@ -65,18 +62,14 @@ public class DeliveryService {
             masterDataDeliveries.add(masterDataDelivery);
         }
 
-        // Gán danh sách vào Delivery
         delivery.setMasterDataDeliveries(masterDataDeliveries);
 
-        // Lưu vào DB
         Delivery savedDelivery = deliveryRepository.save(delivery);
 
         return mapToDto(savedDelivery);
     }
 
-    /**
-     * Lưu danh sách Delivery từ danh sách DTO
-     */
+
     @Transactional
     public List<DeliveryDto> saveAll(List<DeliveryDto> deliveryDtos) {
         List<Delivery> deliveries = deliveryDtos.stream().map(this::mapToEntity).collect(Collectors.toList());
@@ -89,7 +82,10 @@ public class DeliveryService {
         List<MasterDataDeliveryDto> masterDataDtos = delivery.getMasterDataDeliveries().stream()
                 .map(masterData -> new MasterDataDeliveryDto(
                         masterData.getId(),
-                        0
+                        0,
+                        masterData.getManufaturingDate(),
+                        masterData.getExpirationDate(),
+                        masterData.getBatch()
                 ))
                 .collect(Collectors.toList());
 
@@ -97,16 +93,11 @@ public class DeliveryService {
                 delivery.getDeliveryId(),
                 delivery.getCalculationUnit(),
                 delivery.getDeliveryDate(),
-                delivery.getBatch(),
-                delivery.getManufacturingDate(),
-                delivery.getExpireDate(),
                 masterDataDtos
         );
     }
 
-    /**
-     * Chuyển đổi từ DeliveryDto sang Delivery
-     */
+
     private Delivery mapToEntity(DeliveryDto dto) {
         // Lấy danh sách MasterData từ DB theo item ID
         List<MasterData> masterDataList = masterDataRepository.findAllById(
@@ -136,9 +127,6 @@ public class DeliveryService {
                 .quantity(totalQuantity)
                 .calculationUnit(dto.getCalculationUnit())
                 .deliveryDate(dto.getDeliveryDate())
-                .batch(dto.getBatch())
-                .manufacturingDate(dto.getManufacturingDate())
-                .expireDate(dto.getExpireDate())
                 .masterDataDeliveries(masterDataDeliveries)
                 .build();
 

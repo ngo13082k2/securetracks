@@ -15,8 +15,5 @@ public class DeliveryDto {
     private Long deliveryId;
     private CalculationUnit calculationUnit;
     private LocalDate deliveryDate;
-    private String batch;
-    private LocalDate manufacturingDate;
-    private LocalDate expireDate;
     private List<MasterDataDeliveryDto> masterDataItems;
 }

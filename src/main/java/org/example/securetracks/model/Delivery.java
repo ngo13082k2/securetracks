@@ -24,9 +24,6 @@ public class Delivery {
     @Column(name = "calculation_unit")
     private CalculationUnit calculationUnit;
     private LocalDate deliveryDate;
-    private String batch;
-    private LocalDate manufacturingDate;
-    private LocalDate expireDate;
     private int quantity;
     @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MasterDataDelivery> masterDataDeliveries = new ArrayList<>();

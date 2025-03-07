@@ -114,14 +114,14 @@ public class ExcelService {
                     delivery = new Delivery();
                     delivery.setCalculationUnit(CalculationUnit.valueOf(getCellValueDelivery(row.getCell(0))));
                     delivery.setDeliveryDate(LocalDate.parse(getCellValueDelivery(row.getCell(1))));
-                    delivery.setBatch(getCellValueDelivery(row.getCell(2)));
-                    delivery.setManufacturingDate(LocalDate.parse(getCellValueDelivery(row.getCell(3))));
-                    delivery.setExpireDate(LocalDate.parse(getCellValueDelivery(row.getCell(4))));
                     delivery = deliveryRepository.save(delivery);
                 }
 
-                Long itemId = Long.parseLong(getCellValueDelivery(row.getCell(5))); // Chuyển từ String sang Long
+                Long itemId = Long.parseLong(getCellValueDelivery(row.getCell(5)));
                 int quantity = Integer.parseInt(getCellValueDelivery(row.getCell(6))); // Chuyển từ String sang int
+                LocalDate manufacturingDate = LocalDate.parse(getCellValueDelivery(row.getCell(3)));
+                LocalDate expireDate = LocalDate.parse(getCellValueDelivery(row.getCell(4)));
+                String batch = getCellValueDelivery(row.getCell(2));
 
                 MasterData masterData = masterDataRepository.findById(itemId)
                         .orElseThrow(() -> new IllegalArgumentException("MasterData không tồn tại: " + itemId));
@@ -130,12 +130,14 @@ public class ExcelService {
                         .delivery(delivery)
                         .masterData(masterData)
                         .quantity(quantity)
+                        .manufaturingDate(manufacturingDate)
+                        .expirationDate(expireDate)
+                        .batch(batch)
                         .build();
 
                 masterDataDeliveries.add(masterDataDelivery);
                 totalQuantity += quantity;
             }
-
 
             // Cập nhật tổng số lượng trong Delivery
             if (delivery != null) {
@@ -148,6 +150,7 @@ public class ExcelService {
             throw new RuntimeException("Lỗi khi đọc file Excel", e);
         }
     }
+
     private String getCellValueDelivery(Cell cell) {
         if (cell == null) return "";
 

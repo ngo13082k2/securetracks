@@ -3,6 +3,8 @@ package org.example.securetracks.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "master_data_delivery")
 @Getter
@@ -25,4 +27,8 @@ public class MasterDataDelivery {
     private MasterData masterData;
 
     private int quantity;
+    private LocalDate manufaturingDate;
+    private LocalDate expirationDate;
+    private String batch;
+
 }
