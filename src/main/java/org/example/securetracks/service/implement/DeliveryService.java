@@ -6,10 +6,16 @@ import org.example.securetracks.dto.DeliveryDto;
 import org.example.securetracks.dto.MasterDataDeliveryDto;
 import org.example.securetracks.dto.MasterDataDto;
 import org.example.securetracks.model.Delivery;
+import org.example.securetracks.model.DeliveryDetail;
 import org.example.securetracks.model.MasterData;
 import org.example.securetracks.model.MasterDataDelivery;
+import org.example.securetracks.model.enums.CalculationUnit;
+import org.example.securetracks.repository.DeliveryDetailRepository;
 import org.example.securetracks.repository.DeliveryRepository;
+import org.example.securetracks.repository.MasterDataDeliveryRepository;
 import org.example.securetracks.repository.MasterDataRepository;
+import org.example.securetracks.request.CreateDeliveryRequest;
+import org.example.securetracks.service.IDeliveryService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,10 +27,11 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class DeliveryService {
+public class DeliveryService implements IDeliveryService {
     private final DeliveryRepository deliveryRepository;
     private final MasterDataRepository masterDataRepository;
-
+    private final MasterDataDeliveryRepository masterDataDeliveryRepository;
+    private final DeliveryDetailRepository deliveryDetailRepository;
     @Transactional
     public DeliveryDto create(DeliveryDto dto) {
         List<MasterData> masterDataList = masterDataRepository.findAllById(
@@ -68,6 +75,50 @@ public class DeliveryService {
 
         return mapToDto(savedDelivery);
     }
+    @Transactional
+    public String createDelivery(CreateDeliveryRequest request) {
+        // Lưu Delivery vào database trước
+        Delivery savedDelivery = deliveryRepository.save(
+                Delivery.builder()
+                        .calculationUnit(CalculationUnit.valueOf(request.getCalculationUnit()))
+                        .deliveryDate(request.getDeliveryDate())
+                        .build()
+        );
+
+        // Gán Delivery vào một biến final để dùng trong lambda
+        final Delivery deliveryFinal = savedDelivery;
+
+        // Tạo danh sách MasterDataDelivery
+        List<MasterDataDelivery> masterDataDeliveries = request.getItems().stream().map(item -> {
+            MasterData masterData = masterDataRepository.findById(item.getItemId())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy MasterData với ID: " + item.getItemId()));
+
+            return MasterDataDelivery.builder()
+                    .delivery(deliveryFinal)  // Dùng biến final
+                    .masterData(masterData)
+                    .quantity(item.getQuantity())
+                    .manufaturingDate(item.getManufacturingDate())
+                    .expirationDate(item.getExpireDate())
+                    .batch(item.getBatch())
+                    .build();
+        }).collect(Collectors.toList());
+
+        masterDataDeliveryRepository.saveAll(masterDataDeliveries);
+
+        // Tạo DeliveryDetail từ MasterDataDelivery
+        List<DeliveryDetail> details = masterDataDeliveries.stream().map(mdd -> {
+            int totalBottles = mdd.getMasterData().getSpec() * mdd.getMasterData().getPer() * mdd.getQuantity();
+            return DeliveryDetail.builder()
+                    .masterDataDelivery(mdd)
+                    .totalBottles(totalBottles)
+                    .build();
+        }).collect(Collectors.toList());
+
+        deliveryDetailRepository.saveAll(details);
+
+        return "Đã tạo Delivery thành công với ID: " + savedDelivery.getDeliveryId();
+    }
+
 
 
     @Transactional
@@ -76,7 +127,12 @@ public class DeliveryService {
         List<Delivery> savedDeliveries = deliveryRepository.saveAll(deliveries);
         return savedDeliveries.stream().map(this::mapToDto).collect(Collectors.toList());
     }
-
+    public List<DeliveryDto> getAllDeliveries() {
+        List<Delivery> deliveries = deliveryRepository.findAll();
+        return deliveries.stream()
+                .map(this::mapToDto)  
+                .collect(Collectors.toList());
+    }
 
     private DeliveryDto mapToDto(Delivery delivery) {
         List<MasterDataDeliveryDto> masterDataDtos = delivery.getMasterDataDeliveries().stream()
@@ -93,9 +149,11 @@ public class DeliveryService {
                 delivery.getDeliveryId(),
                 delivery.getCalculationUnit(),
                 delivery.getDeliveryDate(),
-                masterDataDtos
+                masterDataDtos,
+                delivery.getQuantity()
         );
     }
+
 
 
     private Delivery mapToEntity(DeliveryDto dto) {

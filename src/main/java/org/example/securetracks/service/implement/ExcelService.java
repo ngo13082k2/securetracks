@@ -5,9 +5,11 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.example.securetracks.dto.DeliveryDto;
 import org.example.securetracks.dto.MasterDataDto;
 import org.example.securetracks.model.Delivery;
+import org.example.securetracks.model.DeliveryDetail;
 import org.example.securetracks.model.MasterData;
 import org.example.securetracks.model.MasterDataDelivery;
 import org.example.securetracks.model.enums.CalculationUnit;
+import org.example.securetracks.repository.DeliveryDetailRepository;
 import org.example.securetracks.repository.DeliveryRepository;
 import org.example.securetracks.repository.MasterDataDeliveryRepository;
 import org.example.securetracks.repository.MasterDataRepository;
@@ -30,6 +32,8 @@ public class ExcelService {
     private DeliveryRepository deliveryRepository;
     @Autowired
     private MasterDataDeliveryRepository masterDataDeliveryRepository;
+    @Autowired
+    private DeliveryDetailRepository deliveryDetailRepository;
 
     public void importExcel(MultipartFile file) throws IOException {
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
@@ -104,6 +108,7 @@ public class ExcelService {
             rowIterator.next(); // Bỏ qua dòng tiêu đề
 
             List<MasterDataDelivery> masterDataDeliveries = new ArrayList<>();
+            List<DeliveryDetail> deliveryDetails = new ArrayList<>();
             int totalQuantity = 0;
             Delivery delivery = null;
 
@@ -118,7 +123,7 @@ public class ExcelService {
                 }
 
                 Long itemId = Long.parseLong(getCellValueDelivery(row.getCell(5)));
-                int quantity = Integer.parseInt(getCellValueDelivery(row.getCell(6))); // Chuyển từ String sang int
+                int quantity = Integer.parseInt(getCellValueDelivery(row.getCell(6)));
                 LocalDate manufacturingDate = LocalDate.parse(getCellValueDelivery(row.getCell(3)));
                 LocalDate expireDate = LocalDate.parse(getCellValueDelivery(row.getCell(4)));
                 String batch = getCellValueDelivery(row.getCell(2));
@@ -135,7 +140,16 @@ public class ExcelService {
                         .batch(batch)
                         .build();
 
-                masterDataDeliveries.add(masterDataDelivery);
+                masterDataDelivery = masterDataDeliveryRepository.save(masterDataDelivery);
+
+                // Tạo DeliveryDetail dựa trên MasterDataDelivery
+                int totalBottles = masterData.getSpec() * masterData.getPer() * quantity;
+                DeliveryDetail deliveryDetail = DeliveryDetail.builder()
+                        .masterDataDelivery(masterDataDelivery)
+                        .totalBottles(totalBottles)
+                        .build();
+
+                deliveryDetails.add(deliveryDetail);
                 totalQuantity += quantity;
             }
 
@@ -143,13 +157,14 @@ public class ExcelService {
             if (delivery != null) {
                 delivery.setQuantity(totalQuantity);
                 deliveryRepository.save(delivery);
-                masterDataDeliveryRepository.saveAll(masterDataDeliveries);
+                deliveryDetailRepository.saveAll(deliveryDetails); // Lưu DeliveryDetail
             }
 
         } catch (IOException e) {
             throw new RuntimeException("Lỗi khi đọc file Excel", e);
         }
     }
+
 
     private String getCellValueDelivery(Cell cell) {
         if (cell == null) return "";
