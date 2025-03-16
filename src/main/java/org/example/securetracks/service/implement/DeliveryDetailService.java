@@ -47,7 +47,7 @@ public class DeliveryDetailService implements IDeliveryDetailService {
                     MasterDataDelivery masterDataDelivery = detail.getMasterDataDelivery();
                     return DeliveryDetailDto.builder()
                             .item(masterDataDelivery.getMasterData().getItem())
-                            .quantity(masterDataDelivery.getQuantity()) // Số lượng
+                            .quantity(detail.getTotalBottles()) // Số lượng
                             .masterDataName(masterDataDelivery.getMasterData().getName()) // Tên sản phẩm
                             .manufacturingDate(masterDataDelivery.getManufaturingDate().toString()) // Ngày sản xuất
                             .expireDate(masterDataDelivery.getExpirationDate().toString()) // Hạn sử dụng

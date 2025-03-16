@@ -16,4 +16,5 @@ public class DeliveryDto {
     private CalculationUnit calculationUnit;
     private LocalDate deliveryDate;
     private List<MasterDataDeliveryDto> masterDataItems;
+    private int quantity;
 }
