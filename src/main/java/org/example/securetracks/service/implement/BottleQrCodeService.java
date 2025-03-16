@@ -11,9 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +22,8 @@ public class BottleQrCodeService implements IBottleQrCodeService {
 
     @Autowired
     private DeliveryDetailRepository deliveryDetailRepository;
+    @Autowired
+    private QRGenerator qrGenerator;
 
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int QR_LENGTH = 10;
@@ -44,10 +44,25 @@ public class BottleQrCodeService implements IBottleQrCodeService {
             if (!existingIds.contains(detail.getMasterDataDelivery().getId())) { // Kiểm tra nếu chưa tạo QR
                 for (int i = 0; i < detail.getTotalBottles(); i++) {
                     String qrCode = generateRandomQrCode(random);
-                    newQrCodes.add(BottleQrCode.builder()
+
+                    // **Tạo dữ liệu QR Code**
+                    String qrData = "QR Code: " + qrCode +
+                            "\nDelivery Date: " + detail.getMasterDataDelivery().getDelivery().getDeliveryDate() +
+                            "\nManufacturing Date: " + detail.getMasterDataDelivery().getManufaturingDate() +
+                            "\nExpiration Date: " + detail.getMasterDataDelivery().getExpirationDate() +
+                            "\nBatch: " + detail.getMasterDataDelivery().getBatch() +
+                            "\nProduct Name: " + detail.getMasterDataDelivery().getMasterData().getName();
+
+                    byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
+
+                    // **Tạo đối tượng BottleQrCode**
+                    BottleQrCode bottleQrCode = BottleQrCode.builder()
                             .qrCode(qrCode)
+                            .qrCodeImage(qrImage)
                             .deliveryDetail(detail)
-                            .build());
+                            .build();
+
+                    newQrCodes.add(bottleQrCode);
                 }
             }
         }
@@ -56,6 +71,7 @@ public class BottleQrCodeService implements IBottleQrCodeService {
             bottleQrCodeRepository.saveAll(newQrCodes);
         }
     }
+
 
     private String generateRandomQrCode(SecureRandom random) {
         StringBuilder sb = new StringBuilder(QR_LENGTH);
@@ -88,5 +104,27 @@ public class BottleQrCodeService implements IBottleQrCodeService {
     public BottleQrCode getBottleQrCodeByQrCode(String qrCode) {
         return bottleQrCodeRepository.findByQrCode(qrCode)
                 .orElseThrow(() -> new RuntimeException("QR Code không tồn tại"));
+    }
+    public void saveBottleQrCode(BottleQrCode bottleQrCode) {
+        bottleQrCodeRepository.save(bottleQrCode);
+    }
+    public List<Map<String, Object>> getQRCodesByDeliveryId(Long deliveryId) {
+        List<BottleQrCode> qrCodes = bottleQrCodeRepository.findByDeliveryDetail_MasterDataDelivery_Delivery_DeliveryId(deliveryId);
+
+        return qrCodes.stream().map(qr -> {
+            String qrData = "QR Code: " + qr.getQrCode() +
+                    "\nDelivery Date: " + qr.getDeliveryDetail().getMasterDataDelivery().getDelivery().getDeliveryDate() +
+                    "\nManufacturing Date: " + qr.getDeliveryDetail().getMasterDataDelivery().getManufaturingDate() +
+                    "\nExpiration Date: " + qr.getDeliveryDetail().getMasterDataDelivery().getExpirationDate() +
+                    "\nBatch: " + qr.getDeliveryDetail().getMasterDataDelivery().getBatch() +
+                    "\nProduct Name: " + qr.getDeliveryDetail().getMasterDataDelivery().getMasterData().getName();
+
+            byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("qrCode", qr.getQrCode());
+            result.put("qrCodeImage", Base64.getEncoder().encodeToString(qrImage)); // Chuyển ảnh thành Base64
+            return result;
+        }).collect(Collectors.toList());
     }
 }

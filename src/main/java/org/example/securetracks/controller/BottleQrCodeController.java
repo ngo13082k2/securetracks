@@ -5,8 +5,12 @@ import org.example.securetracks.response.BottleQrCodeResponse;
 import org.example.securetracks.service.implement.BottleQrCodeService;
 import org.example.securetracks.service.implement.QRGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/qrcode")
@@ -30,7 +34,9 @@ public class BottleQrCodeController {
     @GetMapping("generateQR/{code}")
     public ResponseEntity<byte[]> generateQRCode(@PathVariable String code) {
         BottleQrCode bottleQrCode = bottleQrCodeService.getBottleQrCodeByQrCode(code);
-
+        if (bottleQrCode.getQrCodeImage() != null) {
+            return ResponseEntity.ok().contentType(org.springframework.http.MediaType.IMAGE_PNG).body(bottleQrCode.getQrCodeImage());
+        }
         String qrData = "QR Code: " + bottleQrCode.getQrCode() +
                 "\nDelivery Date: " + bottleQrCode.getDeliveryDetail().getMasterDataDelivery().getDelivery().getDeliveryDate() +
                 "\nManufacturing Date: " + bottleQrCode.getDeliveryDetail().getMasterDataDelivery().getManufaturingDate() +
@@ -39,7 +45,20 @@ public class BottleQrCodeController {
                 "\nProduct Name: " + bottleQrCode.getDeliveryDetail().getMasterDataDelivery().getMasterData().getName();
 
         byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
+        bottleQrCode.setQrCodeImage(qrImage);
+        bottleQrCodeService.saveBottleQrCode(bottleQrCode);
+
 
         return ResponseEntity.ok().contentType(org.springframework.http.MediaType.IMAGE_PNG).body(qrImage);
+    }
+    @GetMapping("/delivery/{deliveryId}")
+    public ResponseEntity<List<Map<String, Object>>> getQRCodesByDeliveryId(@PathVariable Long deliveryId) {
+        List<Map<String, Object>> qrCodes = bottleQrCodeService.getQRCodesByDeliveryId(deliveryId);
+
+        if (qrCodes.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        return ResponseEntity.ok(qrCodes);
     }
 }

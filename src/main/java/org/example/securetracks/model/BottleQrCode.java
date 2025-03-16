@@ -21,4 +21,8 @@ public class BottleQrCode {
     @ManyToOne
     @JoinColumn(name = "master_data_delivery_cetail_id", nullable = false)
     private DeliveryDetail deliveryDetail;
+    @Lob
+    @Column(name = "qr_code_image", columnDefinition = "LONGBLOB")
+    private byte[] qrCodeImage;
+
 }
