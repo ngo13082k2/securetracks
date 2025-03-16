@@ -109,22 +109,47 @@ public class BottleQrCodeService implements IBottleQrCodeService {
         bottleQrCodeRepository.save(bottleQrCode);
     }
     public List<Map<String, Object>> getQRCodesByDeliveryId(Long deliveryId) {
+        // Lấy danh sách tất cả QR codes theo Delivery ID
         List<BottleQrCode> qrCodes = bottleQrCodeRepository.findByDeliveryDetail_MasterDataDelivery_Delivery_DeliveryId(deliveryId);
 
-        return qrCodes.stream().map(qr -> {
+        // Sử dụng Map để nhóm QR codes theo từng sản phẩm
+        Map<Long, Map<String, Object>> groupedItems = new HashMap<>();
+
+        for (BottleQrCode qr : qrCodes) {
+            MasterDataDelivery masterDataDelivery = qr.getDeliveryDetail().getMasterDataDelivery();
+            Long itemId = masterDataDelivery.getMasterData().getItem(); // ID của sản phẩm
+
+            // Nếu sản phẩm chưa có trong nhóm, tạo mới
+            if (!groupedItems.containsKey(itemId)) {
+                Map<String, Object> itemData = new HashMap<>();
+                itemData.put("itemId", itemId);
+                itemData.put("productName", masterDataDelivery.getMasterData().getName());
+                itemData.put("qrCodes", new ArrayList<>());
+
+                groupedItems.put(itemId, itemData);
+            }
+
+            // Tạo QR code data
             String qrData = "QR Code: " + qr.getQrCode() +
-                    "\nDelivery Date: " + qr.getDeliveryDetail().getMasterDataDelivery().getDelivery().getDeliveryDate() +
-                    "\nManufacturing Date: " + qr.getDeliveryDetail().getMasterDataDelivery().getManufaturingDate() +
-                    "\nExpiration Date: " + qr.getDeliveryDetail().getMasterDataDelivery().getExpirationDate() +
-                    "\nBatch: " + qr.getDeliveryDetail().getMasterDataDelivery().getBatch() +
-                    "\nProduct Name: " + qr.getDeliveryDetail().getMasterDataDelivery().getMasterData().getName();
+                    "\nDelivery Date: " + masterDataDelivery.getDelivery().getDeliveryDate() +
+                    "\nManufacturing Date: " + masterDataDelivery.getManufaturingDate() +
+                    "\nExpiration Date: " + masterDataDelivery.getExpirationDate() +
+                    "\nBatch: " + masterDataDelivery.getBatch() +
+                    "\nProduct Name: " + masterDataDelivery.getMasterData().getName();
 
             byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("qrCode", qr.getQrCode());
-            result.put("qrCodeImage", Base64.getEncoder().encodeToString(qrImage)); // Chuyển ảnh thành Base64
-            return result;
-        }).collect(Collectors.toList());
+            Map<String, Object> qrInfo = new HashMap<>();
+            qrInfo.put("qrCode", qr.getQrCode());
+            qrInfo.put("qrCodeImage", Base64.getEncoder().encodeToString(qrImage)); // Chuyển ảnh thành Base64
+
+            // Thêm QR code vào danh sách của item tương ứng
+            List<Map<String, Object>> qrCodeList = (List<Map<String, Object>>) groupedItems.get(itemId).get("qrCodes");
+            qrCodeList.add(qrInfo);
+        }
+
+        // Chuyển Map thành danh sách
+        return new ArrayList<>(groupedItems.values());
     }
+
 }

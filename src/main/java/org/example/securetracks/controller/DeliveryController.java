@@ -3,6 +3,7 @@ package org.example.securetracks.controller;
 import lombok.RequiredArgsConstructor;
 import org.example.securetracks.dto.DeliveryDto;
 import org.example.securetracks.request.CreateDeliveryRequest;
+import org.example.securetracks.service.IDeliveryService;
 import org.example.securetracks.service.implement.DeliveryService;
 import org.example.securetracks.service.implement.ExcelService;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,7 @@ import java.util.Map;
 @RequestMapping("/api/delivery")
 @RequiredArgsConstructor
 public class DeliveryController {
-    private final DeliveryService deliveryService;
+    private final IDeliveryService deliveryService;
     private final ExcelService excelService;
 
 
