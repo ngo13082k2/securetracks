@@ -1,6 +1,7 @@
 package org.example.securetracks.config;
 
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.example.securetracks.filter.JwtAuthenticationFilter;
 import org.example.securetracks.service.implement.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +14,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 public class SecurityConfig {
@@ -37,7 +42,22 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
+        http.cors().configurationSource(new CorsConfigurationSource() {
+                    @Override
+                    public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
+                        CorsConfiguration configuration = new CorsConfiguration();
+                        configuration.setAllowedOrigins(Arrays.asList(
+                                "http://localhost:5173",
+                                "http://localhost:3000"
+
+
+                        ));
+                        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
+                        configuration.setAllowedHeaders(Arrays.asList("*")); // Cho phép mọi headers
+                        configuration.setAllowCredentials(true);
+                        return configuration;
+                    }
+                }).and() // Enable CORS globally
                 .csrf().disable()
                 .authorizeHttpRequests()
                 .requestMatchers("/api/auth/**").permitAll()

@@ -36,6 +36,7 @@ public class MasterDataService implements IMasterDataService {
     }
 
     public MasterDataDto create(MasterDataDto dto) {
+
         if (masterDataRepository.existsById((dto.getItem()))) {
             throw new RuntimeException("Item đã tồn tại");
         }
