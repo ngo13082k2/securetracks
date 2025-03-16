@@ -103,8 +103,11 @@ public class DeliveryService implements IDeliveryService {
                     .build();
         }).collect(Collectors.toList());
 
-        masterDataDeliveryRepository.saveAll(masterDataDeliveries);
+        int totalQuantity = masterDataDeliveries.stream().mapToInt(MasterDataDelivery::getQuantity).sum();
+        savedDelivery.setQuantity(totalQuantity);
 
+        masterDataDeliveryRepository.saveAll(masterDataDeliveries);
+        deliveryRepository.save(savedDelivery);
         // Tạo DeliveryDetail từ MasterDataDelivery
         List<DeliveryDetail> details = masterDataDeliveries.stream().map(mdd -> {
             int totalBottles = mdd.getMasterData().getSpec() * mdd.getMasterData().getPer() * mdd.getQuantity();

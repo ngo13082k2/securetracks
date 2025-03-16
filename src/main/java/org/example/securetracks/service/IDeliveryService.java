@@ -8,5 +8,6 @@ import java.util.List;
 public interface IDeliveryService {
     DeliveryDto create(DeliveryDto dto);
     List<DeliveryDto> saveAll(List<DeliveryDto> deliveryDtos);
-    public String createDelivery(CreateDeliveryRequest request);
+     String createDelivery(CreateDeliveryRequest request);
+    List<DeliveryDto> getAllDeliveries();
 }
