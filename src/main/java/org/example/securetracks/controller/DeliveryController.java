@@ -2,6 +2,7 @@ package org.example.securetracks.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.example.securetracks.dto.DeliveryDto;
+import org.example.securetracks.request.CreateDeliveryRequest;
 import org.example.securetracks.service.implement.DeliveryService;
 import org.example.securetracks.service.implement.ExcelService;
 import org.springframework.http.HttpStatus;
@@ -53,6 +54,19 @@ public class DeliveryController {
             response.put("message", "Lỗi xử lý file: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
         }
+    }
+    @GetMapping("/all")
+    public ResponseEntity<List<DeliveryDto>> getAllDeliveries() {
+        List<DeliveryDto> deliveries = deliveryService.getAllDeliveries();
+        if (deliveries.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(deliveries);
+    }
+    @PostMapping("/createDelivery")
+    public ResponseEntity<String> createDelivery(@RequestBody CreateDeliveryRequest request) {
+        String response = deliveryService.createDelivery(request);
+        return ResponseEntity.ok(response);
     }
 
 
