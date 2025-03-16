@@ -2,6 +2,7 @@ package org.example.securetracks.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.securetracks.model.enums.CalculationUnit;
 
 import java.time.LocalDate;
 
@@ -30,5 +31,6 @@ public class MasterDataDelivery {
     private LocalDate manufaturingDate;
     private LocalDate expirationDate;
     private String batch;
+    private CalculationUnit calculationUnit;
 
 }
