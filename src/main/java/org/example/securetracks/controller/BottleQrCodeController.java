@@ -61,4 +61,21 @@ public class BottleQrCodeController {
 
         return ResponseEntity.ok(qrCodes);
     }
+    @GetMapping("/delivery/getByItemAndBatch/{deliveryId}")
+    public ResponseEntity<List<Map<String, Object>>> getQRCodesByDelivery(
+            @PathVariable Long deliveryId,
+            @RequestParam Long itemId,
+            @RequestParam String batch) {
+
+        List<Map<String, Object>> qrCodesByBatch = bottleQrCodeService.getQRCodesByDeliverywithItemAndBatch(deliveryId, itemId, batch);
+
+        if (qrCodesByBatch.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        return ResponseEntity.ok(qrCodesByBatch);
+    }
+
+
+
 }

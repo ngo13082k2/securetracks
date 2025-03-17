@@ -47,7 +47,7 @@ public class BottleQrCodeService implements IBottleQrCodeService {
 
                     // **Tạo dữ liệu QR Code**
                     String qrData = "QR Code: " + qrCode +
-                            "\nDelivery Date: " + detail.getMasterDataDelivery().getDelivery().getDeliveryDate() +
+                            "\nItem: " + detail.getMasterDataDelivery().getMasterData().getItem() +
                             "\nManufacturing Date: " + detail.getMasterDataDelivery().getManufaturingDate() +
                             "\nExpiration Date: " + detail.getMasterDataDelivery().getExpirationDate() +
                             "\nBatch: " + detail.getMasterDataDelivery().getBatch() +
@@ -112,29 +112,32 @@ public class BottleQrCodeService implements IBottleQrCodeService {
         // Lấy danh sách tất cả QR codes theo Delivery ID
         List<BottleQrCode> qrCodes = bottleQrCodeRepository.findByDeliveryDetail_MasterDataDelivery_Delivery_DeliveryId(deliveryId);
 
-        // Sử dụng Map để nhóm QR codes theo từng sản phẩm
-        Map<Long, Map<String, Object>> groupedItems = new HashMap<>();
+        // Sử dụng Map để nhóm QR codes theo (itemId + batch)
+        Map<String, Map<String, Object>> groupedItems = new HashMap<>();
 
         for (BottleQrCode qr : qrCodes) {
             MasterDataDelivery masterDataDelivery = qr.getDeliveryDetail().getMasterDataDelivery();
             Long itemId = masterDataDelivery.getMasterData().getItem(); // ID của sản phẩm
+            String batch = masterDataDelivery.getBatch(); // Batch của sản phẩm
+            String key = itemId + "_" + batch; // Dùng key kết hợp itemId + batch
 
-            // Nếu sản phẩm chưa có trong nhóm, tạo mới
-            if (!groupedItems.containsKey(itemId)) {
+            // Nếu key chưa tồn tại, tạo mới
+            if (!groupedItems.containsKey(key)) {
                 Map<String, Object> itemData = new HashMap<>();
                 itemData.put("itemId", itemId);
                 itemData.put("productName", masterDataDelivery.getMasterData().getName());
+                itemData.put("batch", batch);
                 itemData.put("qrCodes", new ArrayList<>());
 
-                groupedItems.put(itemId, itemData);
+                groupedItems.put(key, itemData);
             }
 
             // Tạo QR code data
             String qrData = "QR Code: " + qr.getQrCode() +
-                    "\nDelivery Date: " + masterDataDelivery.getDelivery().getDeliveryDate() +
+                    "\nItem: " + masterDataDelivery.getMasterData().getItem() +
                     "\nManufacturing Date: " + masterDataDelivery.getManufaturingDate() +
                     "\nExpiration Date: " + masterDataDelivery.getExpirationDate() +
-                    "\nBatch: " + masterDataDelivery.getBatch() +
+                    "\nBatch: " + batch +
                     "\nProduct Name: " + masterDataDelivery.getMasterData().getName();
 
             byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
@@ -143,13 +146,68 @@ public class BottleQrCodeService implements IBottleQrCodeService {
             qrInfo.put("qrCode", qr.getQrCode());
             qrInfo.put("qrCodeImage", Base64.getEncoder().encodeToString(qrImage)); // Chuyển ảnh thành Base64
 
-            // Thêm QR code vào danh sách của item tương ứng
-            List<Map<String, Object>> qrCodeList = (List<Map<String, Object>>) groupedItems.get(itemId).get("qrCodes");
+            // Thêm QR code vào danh sách của batch tương ứng
+            List<Map<String, Object>> qrCodeList = (List<Map<String, Object>>) groupedItems.get(key).get("qrCodes");
             qrCodeList.add(qrInfo);
         }
 
         // Chuyển Map thành danh sách
         return new ArrayList<>(groupedItems.values());
     }
+    public List<Map<String, Object>> getQRCodesByDeliverywithItemAndBatch(Long deliveryId, Long itemId, String batch) {
+        // Lấy danh sách tất cả QR codes theo Delivery ID
+        List<BottleQrCode> qrCodes = bottleQrCodeRepository.findByDeliveryDetail_MasterDataDelivery_Delivery_DeliveryId(deliveryId);
+
+        // Dùng Map để nhóm QR codes theo (itemId + batch)
+        Map<String, Map<String, Object>> groupedItems = new HashMap<>();
+
+        for (BottleQrCode qr : qrCodes) {
+            MasterDataDelivery masterDataDelivery = qr.getDeliveryDetail().getMasterDataDelivery();
+            Long currentItemId = masterDataDelivery.getMasterData().getItem(); // ID của sản phẩm
+            String currentBatch = masterDataDelivery.getBatch(); // Batch của sản phẩm
+
+            // Chỉ lấy dữ liệu khi itemId và batch trùng khớp với request
+            if (!currentItemId.equals(itemId) || !currentBatch.equals(batch)) {
+                continue; // Bỏ qua nếu không khớp
+            }
+
+            // Nếu key chưa tồn tại, tạo mới
+            String key = currentItemId + "_" + currentBatch;
+            if (!groupedItems.containsKey(key)) {
+                Map<String, Object> itemData = new HashMap<>();
+                itemData.put("itemId", currentItemId);
+                itemData.put("productName", masterDataDelivery.getMasterData().getName());
+                itemData.put("batch", currentBatch);
+                itemData.put("manufacturingDate", masterDataDelivery.getManufaturingDate());
+                itemData.put("expirationDate", masterDataDelivery.getExpirationDate());
+                itemData.put("qrCodes", new ArrayList<>());
+
+                groupedItems.put(key, itemData);
+            }
+
+            // Tạo QR code data
+            String qrData = "QR Code: " + qr.getQrCode() +
+                    "\nItem: " + masterDataDelivery.getMasterData().getItem() +
+                    "\nManufacturing Date: " + masterDataDelivery.getManufaturingDate() +
+                    "\nExpiration Date: " + masterDataDelivery.getExpirationDate() +
+                    "\nBatch: " + currentBatch +
+                    "\nProduct Name: " + masterDataDelivery.getMasterData().getName();
+
+            byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
+
+            Map<String, Object> qrInfo = new HashMap<>();
+            qrInfo.put("qrCode", qr.getQrCode());
+            qrInfo.put("qrCodeImage", Base64.getEncoder().encodeToString(qrImage));
+
+            // Thêm QR code vào danh sách của batch tương ứng
+            List<Map<String, Object>> qrCodeList = (List<Map<String, Object>>) groupedItems.get(key).get("qrCodes");
+            qrCodeList.add(qrInfo);
+        }
+
+        // Chuyển Map thành danh sách
+        return new ArrayList<>(groupedItems.values());
+    }
+
+
 
 }
