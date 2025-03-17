@@ -62,7 +62,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/master-data/**").hasAnyAuthority("ROLE_MEMBER")
-                .requestMatchers("/api/delivery-details").hasAnyAuthority("ROLE_MEMBER")
+                .requestMatchers("/api/delivery-details/**").hasAnyAuthority("ROLE_MEMBER")
+                .requestMatchers("/api/masterDataDelivery/**").hasAnyAuthority("ROLE_MEMBER")
+
                 .anyRequest().authenticated()
                 .and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
