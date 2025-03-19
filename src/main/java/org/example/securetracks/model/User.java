@@ -29,37 +29,5 @@ public class User {
     private Status status;
     private LocalDateTime createAt;
     private String phone;
-    public String getUsername() {
-        return username;
-    }
-    public String getPassword() {
-        return password;
-    }
-    public Role getRole() {
-        return role;
-    }
 
-    public Status getStatus() {
-        return status;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public LocalDateTime getCreateAt() {
-        return createAt;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
 }
