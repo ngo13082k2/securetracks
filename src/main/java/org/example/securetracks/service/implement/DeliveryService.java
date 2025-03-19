@@ -5,10 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.securetracks.dto.DeliveryDto;
 import org.example.securetracks.dto.MasterDataDeliveryDto;
 import org.example.securetracks.dto.MasterDataDto;
-import org.example.securetracks.model.Delivery;
-import org.example.securetracks.model.DeliveryDetail;
-import org.example.securetracks.model.MasterData;
-import org.example.securetracks.model.MasterDataDelivery;
+import org.example.securetracks.model.*;
 import org.example.securetracks.model.enums.CalculationUnit;
 import org.example.securetracks.repository.DeliveryDetailRepository;
 import org.example.securetracks.repository.DeliveryRepository;
@@ -32,6 +29,7 @@ public class DeliveryService implements IDeliveryService {
     private final MasterDataRepository masterDataRepository;
     private final MasterDataDeliveryRepository masterDataDeliveryRepository;
     private final DeliveryDetailRepository deliveryDetailRepository;
+    private final UserService userService;
     @Transactional
     public DeliveryDto create(DeliveryDto dto) {
         List<MasterData> masterDataList = masterDataRepository.findAllById(
@@ -77,11 +75,21 @@ public class DeliveryService implements IDeliveryService {
     }
     @Transactional
     public String createDelivery(CreateDeliveryRequest request) {
-        // Lưu Delivery vào database trước
+        // Lấy user đang đăng nhập
+        User currentUser = userService.getCurrentUser();
+
+        // Kiểm tra nếu deliveryId đã tồn tại
+        if (deliveryRepository.existsById(request.getDeliveryId())) {
+            throw new IllegalArgumentException("Delivery ID đã tồn tại: " + request.getDeliveryId());
+        }
+
+        // Lưu Delivery vào database với owner là user đang đăng nhập
         Delivery savedDelivery = deliveryRepository.save(
                 Delivery.builder()
+                        .deliveryId(request.getDeliveryId()) // Nhận ID từ request
                         .calculationUnit(CalculationUnit.valueOf(request.getCalculationUnit()))
                         .deliveryDate(request.getDeliveryDate())
+                        .owner(currentUser) // Gán user hiện tại làm chủ
                         .build()
         );
 
@@ -108,6 +116,7 @@ public class DeliveryService implements IDeliveryService {
 
         masterDataDeliveryRepository.saveAll(masterDataDeliveries);
         deliveryRepository.save(savedDelivery);
+
         // Tạo DeliveryDetail từ MasterDataDelivery
         List<DeliveryDetail> details = masterDataDeliveries.stream().map(mdd -> {
             int totalBottles = mdd.getMasterData().getSpec() * mdd.getMasterData().getPer() * mdd.getQuantity();
@@ -124,6 +133,7 @@ public class DeliveryService implements IDeliveryService {
 
 
 
+
     @Transactional
     public List<DeliveryDto> saveAll(List<DeliveryDto> deliveryDtos) {
         List<Delivery> deliveries = deliveryDtos.stream().map(this::mapToEntity).collect(Collectors.toList());
@@ -131,11 +141,17 @@ public class DeliveryService implements IDeliveryService {
         return savedDeliveries.stream().map(this::mapToDto).collect(Collectors.toList());
     }
     public List<DeliveryDto> getAllDeliveries() {
-        List<Delivery> deliveries = deliveryRepository.findAll();
+        // Lấy user đang đăng nhập
+        User currentUser = userService.getCurrentUser();
+
+        // Lấy danh sách Delivery theo ownerId
+        List<Delivery> deliveries = deliveryRepository.findByOwner(currentUser);
+
         return deliveries.stream()
-                .map(this::mapToDto)  
+                .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
+
 
     private DeliveryDto mapToDto(Delivery delivery) {
         List<MasterDataDeliveryDto> masterDataDtos = delivery.getMasterDataDeliveries().stream()
