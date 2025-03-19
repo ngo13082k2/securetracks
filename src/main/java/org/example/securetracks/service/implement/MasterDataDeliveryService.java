@@ -2,12 +2,16 @@ package org.example.securetracks.service.implement;
 
 
 import org.example.securetracks.dto.MasterDataDeliveryDto;
+import org.example.securetracks.model.Delivery;
 import org.example.securetracks.model.MasterDataDelivery;
+import org.example.securetracks.model.User;
+import org.example.securetracks.repository.DeliveryRepository;
 import org.example.securetracks.repository.MasterDataDeliveryRepository;
 import org.example.securetracks.service.IMasterDataDeliveryservice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.AccessDeniedException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -16,6 +20,10 @@ public class MasterDataDeliveryService implements IMasterDataDeliveryservice {
 
     @Autowired
     private MasterDataDeliveryRepository masterDataDeliveryRepository;
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private DeliveryRepository deliveryRepository;
 
     public List<MasterDataDeliveryDto> getAllByDeliveryId(Long deliveryId) {
         List<MasterDataDelivery> masterDataDeliveries = masterDataDeliveryRepository.findByDelivery_DeliveryId(deliveryId);
@@ -32,7 +40,20 @@ public class MasterDataDeliveryService implements IMasterDataDeliveryservice {
                 .batch(masterDataDelivery.getBatch())
                 .build();
     }
-    public List<Map<String, Object>> getItemsAndBatchByDelivery(Long deliveryId) {
+    public List<Map<String, Object>> getItemsAndBatchByDelivery(Long deliveryId) throws AccessDeniedException {
+        // Lấy user đang đăng nhập
+        User currentUser = userService.getCurrentUser();
+
+        // Lấy Delivery theo ID
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Delivery với ID: " + deliveryId));
+
+        // Kiểm tra quyền truy cập (chỉ chủ sở hữu mới được xem)
+        if (!delivery.getOwner().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Bạn không có quyền truy cập dữ liệu này!");
+        }
+
+        // Lấy danh sách MasterDataDelivery thuộc về Delivery ID
         List<MasterDataDelivery> masterDataDeliveries = masterDataDeliveryRepository.findByDelivery_DeliveryId(deliveryId);
 
         // Dùng Set để tránh trùng lặp
@@ -57,5 +78,6 @@ public class MasterDataDeliveryService implements IMasterDataDeliveryservice {
 
         return result;
     }
+
 
 }

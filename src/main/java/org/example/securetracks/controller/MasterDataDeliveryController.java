@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +27,7 @@ public class MasterDataDeliveryController {
         return ResponseEntity.ok(masterDataDeliveries);
     }
     @GetMapping("/delivery/{deliveryId}/items")
-    public ResponseEntity<List<Map<String, Object>>> getItemsByDelivery(@PathVariable Long deliveryId) {
+    public ResponseEntity<List<Map<String, Object>>> getItemsByDelivery(@PathVariable Long deliveryId) throws AccessDeniedException {
         List<Map<String, Object>> items = masterDataDeliveryService.getItemsAndBatchByDelivery(deliveryId);
 
         if (items.isEmpty()) {
