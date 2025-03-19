@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +53,7 @@ public class BottleQrCodeController {
         return ResponseEntity.ok().contentType(org.springframework.http.MediaType.IMAGE_PNG).body(qrImage);
     }
     @GetMapping("/delivery/{deliveryId}")
-    public ResponseEntity<List<Map<String, Object>>> getQRCodesByDeliveryId(@PathVariable Long deliveryId) {
+    public ResponseEntity<List<Map<String, Object>>> getQRCodesByDeliveryId(@PathVariable Long deliveryId) throws AccessDeniedException {
         List<Map<String, Object>> qrCodes = bottleQrCodeService.getQRCodesByDeliveryId(deliveryId);
 
         if (qrCodes.isEmpty()) {
@@ -65,7 +66,7 @@ public class BottleQrCodeController {
     public ResponseEntity<List<Map<String, Object>>> getQRCodesByDelivery(
             @PathVariable Long deliveryId,
             @RequestParam Long itemId,
-            @RequestParam String batch) {
+            @RequestParam String batch) throws AccessDeniedException {
 
         List<Map<String, Object>> qrCodesByBatch = bottleQrCodeService.getQRCodesByDeliverywithItemAndBatch(deliveryId, itemId, batch);
 

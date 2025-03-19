@@ -24,5 +24,6 @@ public class BottleQrCode {
     @Lob
     @Column(name = "qr_code_image", columnDefinition = "LONGBLOB")
     private byte[] qrCodeImage;
-
+//    @ManyToOne
+//    @JoinColumn(name = "order_detail_id")//    private OrderDetail orderDetail;
 }
