@@ -3,6 +3,7 @@ package org.example.securetracks.service.implement;
 import org.example.securetracks.model.*;
 import org.example.securetracks.repository.BottleQrCodeRepository;
 import org.example.securetracks.repository.DeliveryDetailRepository;
+import org.example.securetracks.repository.DeliveryRepository;
 import org.example.securetracks.response.BottleQrCodeResponse;
 import org.example.securetracks.service.IBottleQrCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.file.AccessDeniedException;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,6 +26,10 @@ public class BottleQrCodeService implements IBottleQrCodeService {
     private DeliveryDetailRepository deliveryDetailRepository;
     @Autowired
     private QRGenerator qrGenerator;
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private DeliveryRepository deliveryRepository;
 
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int QR_LENGTH = 10;
@@ -51,7 +57,8 @@ public class BottleQrCodeService implements IBottleQrCodeService {
                             "\nManufacturing Date: " + detail.getMasterDataDelivery().getManufaturingDate() +
                             "\nExpiration Date: " + detail.getMasterDataDelivery().getExpirationDate() +
                             "\nBatch: " + detail.getMasterDataDelivery().getBatch() +
-                            "\nProduct Name: " + detail.getMasterDataDelivery().getMasterData().getName();
+                            "\nProduct Name: " + detail.getMasterDataDelivery().getMasterData().getName() +
+                            "\nOwerName: " + detail.getMasterDataDelivery().getDelivery().getOwner().getFullName();
 
                     byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
 
@@ -108,7 +115,19 @@ public class BottleQrCodeService implements IBottleQrCodeService {
     public void saveBottleQrCode(BottleQrCode bottleQrCode) {
         bottleQrCodeRepository.save(bottleQrCode);
     }
-    public List<Map<String, Object>> getQRCodesByDeliveryId(Long deliveryId) {
+    public List<Map<String, Object>> getQRCodesByDeliveryId(Long deliveryId) throws AccessDeniedException {
+        // Lấy user đang đăng nhập
+        User currentUser = userService.getCurrentUser();
+
+        // Lấy Delivery theo ID
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Delivery với ID: " + deliveryId));
+
+        // Kiểm tra quyền truy cập (chỉ chủ sở hữu mới được xem)
+        if (!delivery.getOwner().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Bạn không có quyền truy cập dữ liệu này!");
+        }
+
         // Lấy danh sách tất cả QR codes theo Delivery ID
         List<BottleQrCode> qrCodes = bottleQrCodeRepository.findByDeliveryDetail_MasterDataDelivery_Delivery_DeliveryId(deliveryId);
 
@@ -138,7 +157,8 @@ public class BottleQrCodeService implements IBottleQrCodeService {
                     "\nManufacturing Date: " + masterDataDelivery.getManufaturingDate() +
                     "\nExpiration Date: " + masterDataDelivery.getExpirationDate() +
                     "\nBatch: " + batch +
-                    "\nProduct Name: " + masterDataDelivery.getMasterData().getName();
+                    "\nProduct Name: " + masterDataDelivery.getMasterData().getName() +
+                    "\nOwner Name: " + masterDataDelivery.getDelivery().getOwner().getFullName();
 
             byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
 
@@ -154,7 +174,20 @@ public class BottleQrCodeService implements IBottleQrCodeService {
         // Chuyển Map thành danh sách
         return new ArrayList<>(groupedItems.values());
     }
-    public List<Map<String, Object>> getQRCodesByDeliverywithItemAndBatch(Long deliveryId, Long itemId, String batch) {
+
+    public List<Map<String, Object>> getQRCodesByDeliverywithItemAndBatch(Long deliveryId, Long itemId, String batch) throws AccessDeniedException {
+        // Lấy user đang đăng nhập
+        User currentUser = userService.getCurrentUser();
+
+        // Lấy Delivery theo ID
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Delivery với ID: " + deliveryId));
+
+        // Kiểm tra quyền truy cập (chỉ chủ sở hữu mới được xem)
+        if (!delivery.getOwner().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Bạn không có quyền truy cập dữ liệu này!");
+        }
+
         // Lấy danh sách tất cả QR codes theo Delivery ID
         List<BottleQrCode> qrCodes = bottleQrCodeRepository.findByDeliveryDetail_MasterDataDelivery_Delivery_DeliveryId(deliveryId);
 
@@ -191,7 +224,8 @@ public class BottleQrCodeService implements IBottleQrCodeService {
                     "\nManufacturing Date: " + masterDataDelivery.getManufaturingDate() +
                     "\nExpiration Date: " + masterDataDelivery.getExpirationDate() +
                     "\nBatch: " + currentBatch +
-                    "\nProduct Name: " + masterDataDelivery.getMasterData().getName();
+                    "\nProduct Name: " + masterDataDelivery.getMasterData().getName() +
+                    "\nOwner Name: " + masterDataDelivery.getDelivery().getOwner().getFullName();
 
             byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
 
@@ -207,6 +241,7 @@ public class BottleQrCodeService implements IBottleQrCodeService {
         // Chuyển Map thành danh sách
         return new ArrayList<>(groupedItems.values());
     }
+
 
 
 

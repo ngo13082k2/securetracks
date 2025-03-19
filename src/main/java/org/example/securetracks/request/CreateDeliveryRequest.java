@@ -13,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CreateDeliveryRequest {
+    private Long deliveryId;
     private String calculationUnit;
     private LocalDate deliveryDate;
     private List<ItemRequest> items;
