@@ -18,7 +18,6 @@ import java.util.Set;
 @Table(name = "delivery")
 public class Delivery {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long deliveryId;
     @Enumerated(EnumType.STRING)
     @Column(name = "calculation_unit")
@@ -27,5 +26,8 @@ public class Delivery {
     private int quantity;
     @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MasterDataDelivery> masterDataDeliveries = new ArrayList<>();
+    @ManyToOne
+    @JoinColumn(name = "owners_id")
+    private User owner;
 }
 
