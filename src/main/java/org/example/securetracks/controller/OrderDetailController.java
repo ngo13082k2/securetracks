@@ -5,9 +5,11 @@ import org.example.securetracks.dto.OrderRequestDTO;
 import org.example.securetracks.model.OrderDetail;
 import org.example.securetracks.service.IOrderDetailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -30,4 +32,13 @@ public class OrderDetailController {
         OrderDetailDTO dto = orderDetailService.getOrderDetailById(id);
         return ResponseEntity.ok(dto);
     }
+    @GetMapping("/search")
+    public ResponseEntity<List<OrderDetailDTO>> searchOrders(
+            @RequestParam(required = false) String phoneNumber,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate orderDate) {
+
+        List<OrderDetailDTO> orders = orderDetailService.searchOrders(phoneNumber, orderDate);
+        return ResponseEntity.ok(orders);
+    }
+
 }

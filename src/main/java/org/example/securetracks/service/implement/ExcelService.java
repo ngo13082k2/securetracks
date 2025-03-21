@@ -110,18 +110,21 @@ public class ExcelService {
 
             User currentUser = userService.getCurrentUser();
 
-            List<MasterDataDelivery> masterDataDeliveries = new ArrayList<>();
             List<DeliveryDetail> deliveryDetails = new ArrayList<>();
             int totalQuantity = 0;
             Delivery delivery = null;
 
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
-
-                // Lấy deliveryId từ cột đầu tiên (cột 0)
                 Long deliveryId = Long.parseLong(getCellValueDelivery(row.getCell(0)));
 
-                // Kiểm tra xem deliveryId có tồn tại không
+                // Kiểm tra nếu deliveryId đã tồn tại trong MasterDataDelivery
+                boolean exists = masterDataDeliveryRepository.existsByDelivery_DeliveryId(deliveryId);
+                if (exists) {
+                    throw new RuntimeException("Delivery ID: " + deliveryId + " đã tồn tại, không thể nhập dữ liệu!");
+                }
+
+                // Nếu chưa tồn tại, tiếp tục tạo Delivery
                 Optional<Delivery> existingDelivery = deliveryRepository.findById(deliveryId);
                 if (existingDelivery.isPresent()) {
                     delivery = existingDelivery.get();
@@ -129,21 +132,20 @@ public class ExcelService {
                         throw new RuntimeException("Bạn không có quyền nhập dữ liệu vào Delivery này!");
                     }
                 } else {
-                    // Nếu chưa có thì tạo mới với ID nhập vào
                     delivery = new Delivery();
                     delivery.setDeliveryId(deliveryId);
-                    delivery.setCalculationUnit(CalculationUnit.valueOf(getCellValueDelivery(row.getCell(1)))); // +1 vị trí
-                    delivery.setDeliveryDate(LocalDate.parse(getCellValueDelivery(row.getCell(2)))); // +1 vị trí
+                    delivery.setCalculationUnit(CalculationUnit.valueOf(getCellValueDelivery(row.getCell(1))));
+                    delivery.setDeliveryDate(LocalDate.parse(getCellValueDelivery(row.getCell(2))));
                     delivery.setOwner(currentUser);
                     delivery = deliveryRepository.save(delivery);
                 }
 
-                // Các cột còn lại cũng tăng vị trí lên 1
-                String batch = getCellValueDelivery(row.getCell(3)); // +1 vị trí
-                LocalDate manufacturingDate = LocalDate.parse(getCellValueDelivery(row.getCell(4))); // +1 vị trí
-                LocalDate expireDate = LocalDate.parse(getCellValueDelivery(row.getCell(5))); // +1 vị trí
-                Long itemId = Long.parseLong(getCellValueDelivery(row.getCell(6))); // +1 vị trí
-                int quantity = Integer.parseInt(getCellValueDelivery(row.getCell(7))); // +1 vị trí
+                // Tiếp tục lấy dữ liệu từ Excel
+                String batch = getCellValueDelivery(row.getCell(3));
+                LocalDate manufacturingDate = LocalDate.parse(getCellValueDelivery(row.getCell(4)));
+                LocalDate expireDate = LocalDate.parse(getCellValueDelivery(row.getCell(5)));
+                Long itemId = Long.parseLong(getCellValueDelivery(row.getCell(6)));
+                int quantity = Integer.parseInt(getCellValueDelivery(row.getCell(7)));
 
                 MasterData masterData = masterDataRepository.findById(itemId)
                         .orElseThrow(() -> new IllegalArgumentException("MasterData không tồn tại: " + itemId));
@@ -157,9 +159,7 @@ public class ExcelService {
                         .batch(batch)
                         .build();
 
-                masterDataDelivery = masterDataDeliveryRepository.save(masterDataDelivery);
-
-                // Tạo DeliveryDetail dựa trên MasterDataDelivery
+                // Tạo DeliveryDetail
                 int totalBottles = masterData.getSpec() * masterData.getPer() * quantity;
                 DeliveryDetail deliveryDetail = DeliveryDetail.builder()
                         .masterDataDelivery(masterDataDelivery)
@@ -170,7 +170,7 @@ public class ExcelService {
                 totalQuantity += quantity;
             }
 
-            // Cập nhật tổng số lượng trong Delivery
+            // Chỉ lưu dữ liệu nếu deliveryId chưa tồn tại trước đó
             if (delivery != null) {
                 delivery.setQuantity(totalQuantity);
                 deliveryRepository.save(delivery);
@@ -181,6 +181,7 @@ public class ExcelService {
             throw new RuntimeException("Lỗi khi đọc file Excel", e);
         }
     }
+
 
 
 

@@ -2,6 +2,7 @@ package org.example.securetracks.dto;
 
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -15,4 +16,5 @@ public class OrderDetailDTO {
     private String customerPhoneNumber; // Thêm số điện thoại khách hàng
     private String customerName; // Thêm tên khách hàng
    private List<OrderQrDetailDTO> qrDetails;
+   private LocalDateTime orderDate;
 }

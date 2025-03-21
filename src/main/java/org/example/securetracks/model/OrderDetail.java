@@ -3,6 +3,8 @@ package org.example.securetracks.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 @Entity
 @Getter
@@ -28,4 +30,6 @@ public class OrderDetail {
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+    @Column(name = "date_create")
+    private LocalDateTime dateCreate;
 }

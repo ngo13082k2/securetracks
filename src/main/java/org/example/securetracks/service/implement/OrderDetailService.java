@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -68,6 +69,7 @@ public class OrderDetailService implements IOrderDetailService {
                 .customer(customer)
                 .user(currentUser) // Gán User vào OrderDetail
                 .totalProducts(request.getQrCodes().size())
+                .dateCreate(LocalDateTime.now())
                 .build();
         orderDetailRepository.save(order);
 
@@ -93,8 +95,8 @@ public class OrderDetailService implements IOrderDetailService {
                 .id(order.getId())
                 .totalProducts(order.getTotalProducts())
                 .customerPhoneNumber(order.getCustomer().getPhoneNumber()) // Lấy số điện thoại
-                .customerName(order.getCustomer().getCustomerName()) // Lấy tên khách hàng
-
+                .customerName(order.getCustomer().getCustomerName())
+                .orderDate(order.getDateCreate())
                 .build()
         ).collect(Collectors.toList());
     }
@@ -123,6 +125,30 @@ public class OrderDetailService implements IOrderDetailService {
                 .qrDetails(qrDetails)
                 .build();
     }
+    public List<OrderDetailDTO> searchOrders(String phoneNumber, LocalDate orderDate) {
+        User currentUser = userService.getCurrentUser();
+
+        List<OrderDetail> orders;
+        if (phoneNumber != null && orderDate != null) {
+            orders = orderDetailRepository.findByUserAndCustomerPhoneNumberAndDateCreate(currentUser, phoneNumber, orderDate);
+        } else if (phoneNumber != null) {
+            orders = orderDetailRepository.findByUserAndCustomerPhoneNumber(currentUser, phoneNumber);
+        } else if (orderDate != null) {
+            orders = orderDetailRepository.findByUserAndDateCreate(currentUser, orderDate);
+        } else {
+            orders = orderDetailRepository.findByUser(currentUser);
+        }
+
+        return orders.stream().map(order -> OrderDetailDTO.builder()
+                .id(order.getId())
+                .totalProducts(order.getTotalProducts())
+                .customerPhoneNumber(order.getCustomer().getPhoneNumber())
+                .customerName(order.getCustomer().getCustomerName())
+                .orderDate(order.getDateCreate())
+                .build()
+        ).collect(Collectors.toList());
+    }
+
 }
 
 
