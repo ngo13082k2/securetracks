@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -36,11 +37,12 @@ public class OrderDetailService implements IOrderDetailService {
         // Lấy User đang đăng nhập
         User currentUser = userService.getCurrentUser();
 
+        // Kiểm tra và lấy thông tin khách hàng
         CustomerMasterData customer = customerRepository.findByPhoneNumber(request.getPhoneNumber())
                 .orElse(null);
 
         if (customer == null) {
-            // Nếu khách hàng chưa tồn tại, tạo mới và gán User
+            // Nếu khách hàng chưa tồn tại, tạo mới
             customer = CustomerMasterData.builder()
                     .phoneNumber(request.getPhoneNumber())
                     .customerName(request.getCustomerName())
@@ -49,32 +51,44 @@ public class OrderDetailService implements IOrderDetailService {
                     .ward(request.getWard())
                     .street(request.getStreet())
                     .addressDetail(request.getAddressDetail())
-                    .user(currentUser) // Gán User vào Customer
                     .build();
         } else {
-            // Nếu khách hàng đã tồn tại, cập nhật thông tin mới và gán User
+            // Nếu khách hàng đã tồn tại, cập nhật thông tin mới
             customer.setCustomerName(request.getCustomerName());
             customer.setProvince(request.getProvince());
             customer.setDistrict(request.getDistrict());
             customer.setWard(request.getWard());
             customer.setStreet(request.getStreet());
             customer.setAddressDetail(request.getAddressDetail());
-            customer.setUser(currentUser); // Gán User vào Customer
         }
 
         customerRepository.save(customer);
 
-        // Tạo đơn hàng và gán User
+        // Kiểm tra xem QR codes đã tồn tại hay chưa
+        List<String> qrCodes = request.getQrCodes();
+        List<OrderQrDetail> existingQrDetails = orderQrDetailRepository.findByQrCodeIn(qrCodes);
+
+        if (!existingQrDetails.isEmpty()) {
+            List<String> existingQrCodes = existingQrDetails.stream()
+                    .map(OrderQrDetail::getQrCode)
+                    .collect(Collectors.toList());
+
+            throw new RuntimeException("Các QR Codes đã tồn tại: " + existingQrCodes);
+        }
+
+        // Tạo đơn hàng mới
         OrderDetail order = OrderDetail.builder()
                 .customer(customer)
-                .user(currentUser) // Gán User vào OrderDetail
-                .totalProducts(request.getQrCodes().size())
-                .dateCreate(LocalDateTime.now())
+                .user(currentUser)
+                .totalProducts(qrCodes.size())
+                .dateCreate(LocalDate.now())
+                .timeCreate(LocalTime.now())
                 .build();
+
         orderDetailRepository.save(order);
 
-        // Lưu từng QR code vào OrderQrDetail
-        List<OrderQrDetail> qrDetails = request.getQrCodes().stream().map(qrCode ->
+        // Lưu danh sách QR Code vào OrderQrDetail
+        List<OrderQrDetail> qrDetails = qrCodes.stream().map(qrCode ->
                 OrderQrDetail.builder()
                         .qrCode(qrCode)
                         .orderCreationDate(LocalDateTime.now())
@@ -86,6 +100,8 @@ public class OrderDetailService implements IOrderDetailService {
 
         return order;
     }
+
+
     public List<OrderDetailDTO> getOrdersByUser() {
         User currentUser = userService.getCurrentUser();
 
@@ -125,16 +141,14 @@ public class OrderDetailService implements IOrderDetailService {
                 .qrDetails(qrDetails)
                 .build();
     }
-    public List<OrderDetailDTO> searchOrders(String phoneNumber, LocalDate orderDate) {
+    public List<OrderDetailDTO> searchOrders(String phoneNumber, LocalDate startDate, LocalDate endDate) {
         User currentUser = userService.getCurrentUser();
-
         List<OrderDetail> orders;
-        if (phoneNumber != null && orderDate != null) {
-            orders = orderDetailRepository.findByUserAndCustomerPhoneNumberAndDateCreate(currentUser, phoneNumber, orderDate);
+
+        if (startDate != null && endDate != null) {
+            orders = orderDetailRepository.findByUserAndDateCreateBetween(currentUser, startDate, endDate);
         } else if (phoneNumber != null) {
             orders = orderDetailRepository.findByUserAndCustomerPhoneNumber(currentUser, phoneNumber);
-        } else if (orderDate != null) {
-            orders = orderDetailRepository.findByUserAndDateCreate(currentUser, orderDate);
         } else {
             orders = orderDetailRepository.findByUser(currentUser);
         }
@@ -148,6 +162,7 @@ public class OrderDetailService implements IOrderDetailService {
                 .build()
         ).collect(Collectors.toList());
     }
+
 
 }
 

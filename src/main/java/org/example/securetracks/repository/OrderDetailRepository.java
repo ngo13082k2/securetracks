@@ -8,10 +8,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, Long> {
-    List<OrderDetail> findByCustomer_User(User user);
 
     List<OrderDetail> findByUser(User currentUser);
     List<OrderDetail> findByUserAndCustomerPhoneNumber(User user, String phoneNumber);
-    List<OrderDetail> findByUserAndDateCreate(User user, LocalDate dateCreate);
-    List<OrderDetail> findByUserAndCustomerPhoneNumberAndDateCreate(User user, String phoneNumber, LocalDate dateCreate);
+
+
+    List<OrderDetail> findByUserAndDateCreateBetween(User user, LocalDate startDate, LocalDate endDate);
+
 }
