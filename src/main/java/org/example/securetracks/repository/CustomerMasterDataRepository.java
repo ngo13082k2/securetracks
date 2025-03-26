@@ -9,6 +9,4 @@ import java.util.Optional;
 
 public interface CustomerMasterDataRepository extends JpaRepository<CustomerMasterData, Long> {
     Optional<CustomerMasterData> findByPhoneNumber(String phoneNumber);
-    List<CustomerMasterData> findByUser(User user);
-
 }
