@@ -38,6 +38,8 @@ public class MasterDataDeliveryService implements IMasterDataDeliveryservice {
                 .ManufacturingDate(masterDataDelivery.getManufaturingDate())
                 .expirationDate(masterDataDelivery.getExpirationDate())
                 .batch(masterDataDelivery.getBatch())
+                .item(masterDataDelivery.getMasterData().getItem())
+                .masterDataName(masterDataDelivery.getMasterData().getName())
                 .build();
     }
     public List<Map<String, Object>> getItemsAndBatchByDelivery(Long deliveryId) throws AccessDeniedException {
