@@ -11,5 +11,5 @@ public interface IOrderDetailService {
     OrderDetail createOrder(OrderRequestDTO orderRequest);
     List<OrderDetailDTO> getOrdersByUser();
     OrderDetailDTO getOrderDetailById(Long orderDetailId);
-    List<OrderDetailDTO> searchOrders(String phoneNumber, LocalDate orderDate);
+    List<OrderDetailDTO> searchOrders(String phoneNumber, LocalDate startDate, LocalDate endDate);
 }

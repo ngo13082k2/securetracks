@@ -119,10 +119,10 @@ public class ExcelService {
                 Long deliveryId = Long.parseLong(getCellValueDelivery(row.getCell(0)));
 
                 // Kiểm tra nếu deliveryId đã tồn tại trong MasterDataDelivery
-                boolean exists = masterDataDeliveryRepository.existsByDelivery_DeliveryId(deliveryId);
-                if (exists) {
-                    throw new RuntimeException("Delivery ID: " + deliveryId + " đã tồn tại, không thể nhập dữ liệu!");
-                }
+//                Optional <Delivery> delivery1 = deliveryRepository.findById(deliveryId);
+//                if (delivery1.isPresent()) {
+//                    throw new RuntimeException("Delivery ID: " + deliveryId + " đã tồn tại, không thể nhập dữ liệu!");
+//                }
 
                 // Nếu chưa tồn tại, tiếp tục tạo Delivery
                 Optional<Delivery> existingDelivery = deliveryRepository.findById(deliveryId);
@@ -158,6 +158,7 @@ public class ExcelService {
                         .expirationDate(expireDate)
                         .batch(batch)
                         .build();
+                masterDataDelivery = masterDataDeliveryRepository.save(masterDataDelivery);
 
                 // Tạo DeliveryDetail
                 int totalBottles = masterData.getSpec() * masterData.getPer() * quantity;
