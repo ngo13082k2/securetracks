@@ -3,6 +3,7 @@ package org.example.securetracks.controller;
 import lombok.RequiredArgsConstructor;
 import org.example.securetracks.dto.CustomerMasterDataDTO;
 import org.example.securetracks.model.CustomerMasterData;
+import org.example.securetracks.service.ICustomerService;
 import org.example.securetracks.service.implement.CustomerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,15 +15,23 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CustomerController {
 
-    private final CustomerService customerService;
+    private final ICustomerService customerService;
 
     @PostMapping
     public ResponseEntity<CustomerMasterData> createCustomer(@RequestBody CustomerMasterDataDTO request) {
         return ResponseEntity.ok(customerService.createCustomer(request));
     }
-    @GetMapping("/mycustomer")
-    public ResponseEntity<List<CustomerMasterData>> getMyCustomers() {
-        List<CustomerMasterData> customers = customerService.getCustomersByLoggedInUser();
+    @GetMapping
+    public ResponseEntity<List<CustomerMasterDataDTO>> getAllCustomers() {
+        List<CustomerMasterDataDTO> customers = customerService.getAllCustomers();
         return ResponseEntity.ok(customers);
+    }
+    @GetMapping("/search")
+    public ResponseEntity<CustomerMasterDataDTO> getCustomerByPhoneNumber(@RequestParam String phoneNumber) {
+        CustomerMasterDataDTO customer = customerService.getCustomerByPhoneNumber(phoneNumber);
+        if (customer == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(customer);
     }
 }

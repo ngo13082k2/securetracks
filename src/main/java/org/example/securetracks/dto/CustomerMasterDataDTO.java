@@ -8,6 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class CustomerMasterDataDTO {
+    private Long id;
     private String phoneNumber;
     private String customerName;
     private String province;

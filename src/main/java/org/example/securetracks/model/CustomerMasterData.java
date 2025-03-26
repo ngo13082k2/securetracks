@@ -37,8 +37,5 @@ public class CustomerMasterData {
     @Column(name = "address_detail")
     private String addressDetail;
 
-    // Thêm liên kết đến User
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+
 }
