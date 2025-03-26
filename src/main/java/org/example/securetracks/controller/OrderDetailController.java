@@ -35,10 +35,12 @@ public class OrderDetailController {
     @GetMapping("/search")
     public ResponseEntity<List<OrderDetailDTO>> searchOrders(
             @RequestParam(required = false) String phoneNumber,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate orderDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        List<OrderDetailDTO> orders = orderDetailService.searchOrders(phoneNumber, orderDate);
+        List<OrderDetailDTO> orders = orderDetailService.searchOrders(phoneNumber, startDate, endDate);
         return ResponseEntity.ok(orders);
     }
+
 
 }

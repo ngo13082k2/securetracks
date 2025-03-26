@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 @Entity
 @Getter
@@ -31,5 +32,7 @@ public class OrderDetail {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
     @Column(name = "date_create")
-    private LocalDateTime dateCreate;
+    private LocalDate dateCreate;
+    @Column(name = "time_create")
+    private LocalTime timeCreate;
 }
