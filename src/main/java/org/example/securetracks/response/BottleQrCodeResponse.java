@@ -18,5 +18,6 @@ public class BottleQrCodeResponse {
     private LocalDate expirationDate;
     private String batch;
     private LocalDate deliveryDate;
+    private String owner;
 //    private int totalBottles;
 }
