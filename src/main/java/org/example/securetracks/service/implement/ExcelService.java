@@ -6,17 +6,18 @@ import org.example.securetracks.dto.DeliveryDto;
 import org.example.securetracks.dto.MasterDataDto;
 import org.example.securetracks.model.*;
 import org.example.securetracks.model.enums.CalculationUnit;
-import org.example.securetracks.repository.DeliveryDetailRepository;
-import org.example.securetracks.repository.DeliveryRepository;
-import org.example.securetracks.repository.MasterDataDeliveryRepository;
-import org.example.securetracks.repository.MasterDataRepository;
+import org.example.securetracks.model.enums.InboundStatus;
+import org.example.securetracks.repository.*;
+import org.example.securetracks.response.BottleQrCodeResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,7 +35,12 @@ public class ExcelService {
     private DeliveryDetailRepository deliveryDetailRepository;
     @Autowired
     private UserService userService;
-
+    @Autowired
+    private BottleQrCodeService bottleQrCodeService;
+    @Autowired
+    private BottleQrCodeRepository bottleQrCodeRepository;
+    @Autowired
+    private InboundRepository inboundRepository;
     public void importExcel(MultipartFile file) throws IOException {
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -109,36 +115,34 @@ public class ExcelService {
             rowIterator.next(); // Bỏ qua dòng tiêu đề
 
             User currentUser = userService.getCurrentUser();
-
+            Map<Long, Delivery> deliveryMap = new HashMap<>();
             List<DeliveryDetail> deliveryDetails = new ArrayList<>();
-            int totalQuantity = 0;
-            Delivery delivery = null;
+            List<Inbound> inbounds = new ArrayList<>();
 
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
                 Long deliveryId = Long.parseLong(getCellValueDelivery(row.getCell(0)));
 
-                // Kiểm tra nếu deliveryId đã tồn tại trong MasterDataDelivery
-//                Optional <Delivery> delivery1 = deliveryRepository.findById(deliveryId);
-//                if (delivery1.isPresent()) {
-//                    throw new RuntimeException("Delivery ID: " + deliveryId + " đã tồn tại, không thể nhập dữ liệu!");
-//                }
-
-                // Nếu chưa tồn tại, tiếp tục tạo Delivery
-                Optional<Delivery> existingDelivery = deliveryRepository.findById(deliveryId);
-                if (existingDelivery.isPresent()) {
-                    delivery = existingDelivery.get();
-                    if (!delivery.getOwner().getId().equals(currentUser.getId())) {
-                        throw new RuntimeException("Bạn không có quyền nhập dữ liệu vào Delivery này!");
+                // 🔹 Kiểm tra Delivery ID chỉ một lần (dòng đầu tiên của ID đó)
+                if (!deliveryMap.containsKey(deliveryId)) {
+                    if (deliveryRepository.existsById(deliveryId)) {
+                        throw new RuntimeException("Delivery ID: " + deliveryId + " đã tồn tại, không thể nhập dữ liệu!");
                     }
-                } else {
-                    delivery = new Delivery();
+
+                    // Nếu chưa tồn tại, tạo mới
+                    Delivery delivery = new Delivery();
                     delivery.setDeliveryId(deliveryId);
                     delivery.setCalculationUnit(CalculationUnit.valueOf(getCellValueDelivery(row.getCell(1))));
                     delivery.setDeliveryDate(LocalDate.parse(getCellValueDelivery(row.getCell(2))));
                     delivery.setOwner(currentUser);
+                    delivery.setQuantity(0); // Khởi tạo quantity = 0
                     delivery = deliveryRepository.save(delivery);
+
+                    deliveryMap.put(deliveryId, delivery);
                 }
+
+                // Lấy delivery đã tạo (hoặc lấy từ map)
+                Delivery delivery = deliveryMap.get(deliveryId);
 
                 // Tiếp tục lấy dữ liệu từ Excel
                 String batch = getCellValueDelivery(row.getCell(3));
@@ -168,20 +172,68 @@ public class ExcelService {
                         .build();
 
                 deliveryDetails.add(deliveryDetail);
-                totalQuantity += quantity;
+
+                // 🔹 Cập nhật totalQuantity vào Delivery ngay khi xử lý xong dòng hiện tại
+                delivery.setQuantity(delivery.getQuantity() + quantity);
             }
 
-            // Chỉ lưu dữ liệu nếu deliveryId chưa tồn tại trước đó
-            if (delivery != null) {
-                delivery.setQuantity(totalQuantity);
+            // 🔹 Lưu lại tất cả Delivery sau khi cập nhật quantity
+            for (Delivery delivery : deliveryMap.values()) {
                 deliveryRepository.save(delivery);
+            }
+
+            // Lưu DeliveryDetail nếu có
+            if (!deliveryDetails.isEmpty()) {
                 deliveryDetailRepository.saveAll(deliveryDetails);
+            }
+
+            // 🔹 Gọi hàm tự động tạo QR Code sau khi lưu dữ liệu
+            bottleQrCodeService.generateQrCodesForAllDeliveries();
+
+            // 🔹 Sau khi đã có QR Code, lấy danh sách QR Code từ DB để lưu vào Inbound
+            List<BottleQrCode> bottleQrCodes = bottleQrCodeRepository.findAll();
+
+            for (BottleQrCode bottleQrCode : bottleQrCodes) {
+                // ✅ Lấy thông tin từ QR Code
+                DeliveryDetail deliveryDetail = bottleQrCode.getDeliveryDetail();
+                MasterDataDelivery masterDataDelivery = deliveryDetail.getMasterDataDelivery();
+                Delivery delivery = masterDataDelivery.getDelivery();
+                MasterData masterData = masterDataDelivery.getMasterData();
+
+                // ✅ Tạo đối tượng Inbound với thông tin từ BottleQrCode
+                Inbound inbound = Inbound.builder()
+                        .importDate(LocalDate.now())
+                        .delivery(delivery)
+                        .supplier("Shell")
+                        .item(masterData.getItem()) // Lấy từ MasterData
+                        .itemName(masterData.getName())
+                        .qrCode(bottleQrCode.getQrCode()) // Lấy QR Code từ entity
+                        .manufacturingDate(masterDataDelivery.getManufaturingDate())
+                        .expirationDate(masterDataDelivery.getExpirationDate())
+                        .batch(masterDataDelivery.getBatch())
+                        .user(currentUser)
+                        .quantity(1)
+                        .status(InboundStatus.ACTIVE)
+                        .build();
+
+                inbounds.add(inbound);
+            }
+
+
+            // 🔹 Lưu dữ liệu Inbound sau khi lấy từ QR Code
+            if (!inbounds.isEmpty()) {
+                inboundRepository.saveAll(inbounds);
             }
 
         } catch (IOException e) {
             throw new RuntimeException("Lỗi khi đọc file Excel", e);
         }
     }
+
+
+
+
+
 
 
 
