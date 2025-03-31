@@ -5,10 +5,7 @@ import lombok.*;
 import org.example.securetracks.model.enums.CalculationUnit;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
 @Getter
 @Entity
 @Setter
@@ -29,5 +26,5 @@ public class Delivery {
     @ManyToOne
     @JoinColumn(name = "owners_id")
     private User owner;
-}
 
+}

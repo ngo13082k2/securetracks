@@ -5,10 +5,8 @@ import org.example.securetracks.dto.OrderDetailDTO;
 import org.example.securetracks.dto.OrderQrDetailDTO;
 import org.example.securetracks.dto.OrderRequestDTO;
 import org.example.securetracks.model.*;
-import org.example.securetracks.repository.BottleQrCodeRepository;
-import org.example.securetracks.repository.CustomerMasterDataRepository;
-import org.example.securetracks.repository.OrderDetailRepository;
-import org.example.securetracks.repository.OrderQrDetailRepository;
+import org.example.securetracks.model.enums.InboundStatus;
+import org.example.securetracks.repository.*;
 import org.example.securetracks.response.BottleQrCodeResponse;
 import org.example.securetracks.service.IOrderDetailService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,16 +31,15 @@ public class OrderDetailService implements IOrderDetailService {
     private final OrderQrDetailRepository orderQrDetailRepository;
     private final UserService userService;
     private final BottleQrCodeService bottleQrCodeService;
+    private final OutBoundRepository outBoundRepository;
+    private final InboundRepository inboundRepository;
     public OrderDetail createOrder(OrderRequestDTO request) {
-        // Lấy User đang đăng nhập
         User currentUser = userService.getCurrentUser();
 
-        // Kiểm tra và lấy thông tin khách hàng
         CustomerMasterData customer = customerRepository.findByPhoneNumber(request.getPhoneNumber())
                 .orElse(null);
 
         if (customer == null) {
-            // Nếu khách hàng chưa tồn tại, tạo mới
             customer = CustomerMasterData.builder()
                     .phoneNumber(request.getPhoneNumber())
                     .customerName(request.getCustomerName())
@@ -53,7 +50,6 @@ public class OrderDetailService implements IOrderDetailService {
                     .addressDetail(request.getAddressDetail())
                     .build();
         } else {
-            // Nếu khách hàng đã tồn tại, cập nhật thông tin mới
             customer.setCustomerName(request.getCustomerName());
             customer.setProvince(request.getProvince());
             customer.setDistrict(request.getDistrict());
@@ -64,7 +60,6 @@ public class OrderDetailService implements IOrderDetailService {
 
         customerRepository.save(customer);
 
-        // Kiểm tra xem QR codes đã tồn tại hay chưa
         List<String> qrCodes = request.getQrCodes();
         List<OrderQrDetail> existingQrDetails = orderQrDetailRepository.findByQrCodeIn(qrCodes);
 
@@ -72,11 +67,9 @@ public class OrderDetailService implements IOrderDetailService {
             List<String> existingQrCodes = existingQrDetails.stream()
                     .map(OrderQrDetail::getQrCode)
                     .collect(Collectors.toList());
-
             throw new RuntimeException("Các QR Codes đã tồn tại: " + existingQrCodes);
         }
 
-        // Tạo đơn hàng mới
         OrderDetail order = OrderDetail.builder()
                 .customer(customer)
                 .user(currentUser)
@@ -84,10 +77,8 @@ public class OrderDetailService implements IOrderDetailService {
                 .dateCreate(LocalDate.now())
                 .timeCreate(LocalTime.now())
                 .build();
-
         orderDetailRepository.save(order);
 
-        // Lưu danh sách QR Code vào OrderQrDetail
         List<OrderQrDetail> qrDetails = qrCodes.stream().map(qrCode ->
                 OrderQrDetail.builder()
                         .qrCode(qrCode)
@@ -95,8 +86,34 @@ public class OrderDetailService implements IOrderDetailService {
                         .orderDetail(order)
                         .build()
         ).collect(Collectors.toList());
-
         orderQrDetailRepository.saveAll(qrDetails);
+
+        // Lưu vào Outbound
+        CustomerMasterData finalCustomer = customer;
+        List<OutBound> outbounds = qrDetails.stream().map(qrDetail -> {
+            BottleQrCodeResponse bottleInfo = bottleQrCodeService.getBottleInfoByQrCode(qrDetail.getQrCode());
+            return OutBound.builder()
+                    .orderId(order.getId())
+                    .saleDate(LocalDate.now())
+                    .qrcode(qrDetail.getQrCode())
+                    .customerName(finalCustomer.getCustomerName())
+                    .phoneNumber(finalCustomer.getPhoneNumber())
+                    .item(bottleInfo.getMasterDataId())
+                    .itemName(bottleInfo.getMasterDataName())
+                    .manufacturingDate(bottleInfo.getManufacturingDate())
+                    .expirationDate(bottleInfo.getExpirationDate())
+                    .batch(bottleInfo.getBatch())
+                    .dealer(currentUser.getUsername())
+                    .quantity(1)
+                    .build();
+        }).collect(Collectors.toList());
+
+        outBoundRepository.saveAll(outbounds);
+        List<Inbound> inboundsToUpdate = inboundRepository.findByQrCodeIn(qrCodes);
+        for (Inbound inbound : inboundsToUpdate) {
+            inbound.setStatus(InboundStatus.SOLD);
+        }
+        inboundRepository.saveAll(inboundsToUpdate);
 
         return order;
     }
