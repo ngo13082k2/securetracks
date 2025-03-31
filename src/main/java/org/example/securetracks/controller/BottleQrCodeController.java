@@ -2,6 +2,7 @@ package org.example.securetracks.controller;
 
 import org.example.securetracks.model.BottleQrCode;
 import org.example.securetracks.response.BottleQrCodeResponse;
+import org.example.securetracks.service.IBottleQrCodeService;
 import org.example.securetracks.service.implement.BottleQrCodeService;
 import org.example.securetracks.service.implement.QRGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,7 @@ import java.util.Map;
 public class BottleQrCodeController {
 
     @Autowired
-    private BottleQrCodeService bottleQrCodeService;
+    private IBottleQrCodeService bottleQrCodeService;
     @Autowired
     private QRGenerator qrGenerator;
 

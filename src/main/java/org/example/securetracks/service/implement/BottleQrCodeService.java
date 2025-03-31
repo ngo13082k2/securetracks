@@ -106,7 +106,6 @@ public class BottleQrCodeService implements IBottleQrCodeService {
                 .batch(masterDataDelivery.getBatch())
                 .deliveryDate(delivery.getDeliveryDate())
                 .owner(delivery.getOwner().getFullName())
-//                .totalBottles(deliveryDetail.getTotalBottles())
                 .build();
     }
     public BottleQrCode getBottleQrCodeByQrCode(String qrCode) {
