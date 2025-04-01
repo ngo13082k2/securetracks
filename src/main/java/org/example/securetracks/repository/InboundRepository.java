@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface InboundRepository extends JpaRepository<Inbound, Long> {
     Page<Inbound> findByImportDateAndUser(LocalDate importDate, User user, Pageable pageable);
@@ -38,7 +39,7 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
     Long findTotalQuantity(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
     @Query("SELECT i.item, i.itemName, SUM(i.quantity) " +
             "FROM Inbound i " +
-            "WHERE i.status = 'ACTIVE' " + // ✅ Thêm điều kiện chỉ lấy dữ liệu ACTIVE
+            "WHERE i.status = 'ACTIVE' " +
             "AND (:startDate IS NULL OR :endDate IS NULL OR i.manufacturingDate BETWEEN :startDate AND :endDate) " +
             "GROUP BY i.item, i.itemName")
     Page<Object[]> findItemNamesWithTotalStatus(
@@ -47,9 +48,10 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
             Pageable pageable);
 
     @Query("SELECT SUM(i.quantity) FROM Inbound i " +
-            "WHERE i.status = 'ACTIVE' " + // ✅ Chỉ lấy dữ liệu ACTIVE
+            "WHERE i.status = 'ACTIVE' " +
             "AND (:startDate IS NULL OR :endDate IS NULL OR i.manufacturingDate BETWEEN :startDate AND :endDate)")
     Long findTotalQuantityStatus(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
     Page<Inbound> findByItemAndStatus(Long item, InboundStatus status, Pageable pageable);
+    Optional<Inbound> findByQrCode(String qrCode);
 
 }

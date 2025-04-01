@@ -72,4 +72,16 @@ public class InboundController {
         Map<String, Object> response = inboundService.getAllActiveInboundByItem(item, page, size);
         return ResponseEntity.ok(response);
     }
+    @PutMapping("/toggle-status")
+        public ResponseEntity<String> toggleInboundStatusByQrCode(@RequestParam String qrCode) {
+        String response = inboundService.toggleInboundStatusByQrCode(qrCode);
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/by-qrcode")
+    public ResponseEntity<InboundDTO> getInboundByQrCode(@RequestParam String qrCode) {
+        InboundDTO inbound = inboundService.getInboundByQrCode(qrCode);
+        return ResponseEntity.ok(inbound);
+    }
+
+
 }

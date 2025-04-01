@@ -16,4 +16,6 @@ public interface IInboudService {
     Map<String, Object> getAllUniqueItemNamesWithTotal(LocalDate startDate, LocalDate endDate, int page, int size);
     Map<String, Object> getAllUniqueItemNamesWithTotalStatus(LocalDate startDate, LocalDate endDate, int page, int size);
     Map<String, Object> getAllActiveInboundByItem(Long item, int page, int size);
+    InboundDTO getInboundByQrCode(String qrCode);
+    String toggleInboundStatusByQrCode(String qrCode);
 }

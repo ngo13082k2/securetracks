@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -200,6 +201,22 @@ public class InboundService implements IInboudService {
         response.put("data", data);
 
         return response;
+    }
+    public InboundDTO getInboundByQrCode(String qrCode) {
+        Inbound inbound = inboundRepository.findByQrCode(qrCode)
+                .orElseThrow(() -> new RuntimeException("Inbound not found for QR Code: " + qrCode));
+        return mapDTO(inbound);
+    }
+    @Transactional
+    public String toggleInboundStatusByQrCode(String qrCode) {
+        Inbound inbound = inboundRepository.findByQrCode(qrCode)
+                .orElseThrow(() -> new RuntimeException("Inbound not found for QR Code: " + qrCode));
+
+        inbound.setStatus(inbound.getStatus() == InboundStatus.ACTIVE ? InboundStatus.BLOCKED : InboundStatus.ACTIVE);
+
+        inboundRepository.save(inbound);
+
+        return "Inbound with QR Code: " + qrCode + " is now " + inbound.getStatus();
     }
 
 
