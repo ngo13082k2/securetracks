@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +28,8 @@ public class OutBoundService implements IOutBoundService {
     private OutBoundRepository outboundRepository;
     @Autowired
     private UserService userService;
+    @Autowired
+    private ExcelService excelService;
     // Lấy danh sách Outbound theo ngày hoặc tất cả nếu không có ngày
     public Map<String, Object> getOutboundsByDate(LocalDate saleDate, int page, int size) {
         // ✅ Lấy User đang đăng nhập
@@ -112,7 +116,6 @@ public class OutBoundService implements IOutBoundService {
                         .manufacturingDate(outbound.getManufacturingDate())
                         .expirationDate(outbound.getExpirationDate())
                         .batch(outbound.getBatch())
-                        .status("SOLD") // Nếu OutBound luôn là SOLD, có thể set cứng
                         .build()
         ).collect(Collectors.toList());
 
@@ -123,6 +126,68 @@ public class OutBoundService implements IOutBoundService {
         response.put("data", outboundDTOs);
 
         return response;
+    }
+    public List<OutboundDTO> getAllOutboundsPaged(int page, int size, LocalDate startDate, LocalDate endDate) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<OutBound> outboundPage;
+
+        if (startDate != null && endDate != null) {
+            outboundPage = outboundRepository.findBySaleDateBetween(startDate, endDate, pageable);
+        } else {
+            outboundPage = outboundRepository.findAll(pageable);
+        }
+
+        return outboundPage.getContent().stream()
+                .map(this::mapDTO)
+                .collect(Collectors.toList());
+    }
+    public void exportOutboundsToExcel(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException {
+        List<OutBound> outbounds;
+
+        if (startDate != null && endDate != null) {
+            outbounds = outboundRepository.findBySaleDateBetween(startDate, endDate);
+        } else {
+            outbounds = outboundRepository.findAll();
+        }
+
+        excelService.exportOutboundsToExcel(outbounds, outputStream);
+    }
+
+
+
+    private OutboundDTO mapDTO(OutBound outBound) {
+        return OutboundDTO.builder()
+                .id(outBound.getId())
+                .saleDate(outBound.getSaleDate())
+                .orderId(outBound.getOrderId())
+                .customerName(outBound.getCustomerName())
+                .phoneNumber(outBound.getPhoneNumber())
+                .qrCode(outBound.getQrcode())
+                .item(outBound.getItem())
+                .itemName(outBound.getItemName())
+                .manufacturingDate(outBound.getManufacturingDate())
+                .expirationDate(outBound.getExpirationDate())
+                .batch(outBound.getBatch())
+                .dealer(outBound.getDealer())
+                .build();
+    }
+
+    private OutBound mapEntity(OutboundDTO dto) {
+        return OutBound.builder()
+                .id(dto.getId())
+                .saleDate(dto.getSaleDate())
+                .orderId(dto.getOrderId())
+                .customerName(dto.getCustomerName())
+                .phoneNumber(dto.getPhoneNumber())
+                .qrcode(dto.getQrCode())
+                .item(dto.getItem())
+                .itemName(dto.getItemName())
+                .manufacturingDate(dto.getManufacturingDate())
+                .expirationDate(dto.getExpirationDate())
+                .batch(dto.getBatch())
+                .dealer(dto.getDealer())
+//                .quantity(dto.getQuantity())
+                .build();
     }
 
 

@@ -17,9 +17,9 @@ public class OutboundDTO {
     private Long orderId;
     private String qrCode;
     private LocalDate saleDate;
-    private LocalDate importDate;
     private LocalDate manufacturingDate;
     private LocalDate expirationDate;
     private String batch;
-    private String status;
+    private String phoneNumber;
+    private String dealer;
 }

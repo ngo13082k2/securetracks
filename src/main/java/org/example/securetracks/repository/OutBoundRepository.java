@@ -30,5 +30,8 @@ public interface OutBoundRepository extends JpaRepository<OutBound, Long> {
     @Query("SELECT SUM(o.quantity) FROM OutBound o " +
             "WHERE (:startDate IS NULL OR :endDate IS NULL OR o.saleDate BETWEEN :startDate AND :endDate)")
     Long findTotalQuantity(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    Page<OutBound> findAll(Pageable pageable);
+    Page<OutBound> findBySaleDateBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
+    List<OutBound> findBySaleDateBetween(LocalDate startDate, LocalDate endDate);
 
 }

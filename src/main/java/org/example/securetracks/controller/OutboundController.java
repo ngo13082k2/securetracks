@@ -1,6 +1,8 @@
 package org.example.securetracks.controller;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.example.securetracks.dto.OutBoundSummaryDTO;
+import org.example.securetracks.dto.OutboundDTO;
 import org.example.securetracks.dto.OutboundDetailDTO;
 import org.example.securetracks.service.IOutBoundService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +14,10 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -62,5 +67,34 @@ public class OutboundController {
         Map<String, Object> data = outboundService.getOutboundsByItem(itemId, page, size);
         return ResponseEntity.ok(data);
     }
+    @GetMapping("/paged")
+    public ResponseEntity<Map<String, Object>> getAllOutboundsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        List<OutboundDTO> dtos = outboundService.getAllOutboundsPaged(page, size, startDate, endDate);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("currentPage", page);
+        response.put("data", dtos);
+        response.put("size", size);
+
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/export")
+    public void exportOutboundsToExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            HttpServletResponse response) throws IOException {
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=outbounds.xlsx");
+
+        outboundService.exportOutboundsToExcel(startDate, endDate, response.getOutputStream());
+    }
+
+
 
 }
