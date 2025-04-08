@@ -4,9 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.example.securetracks.dto.CustomerMasterDataDTO;
 import org.example.securetracks.model.CustomerMasterData;
 import org.example.securetracks.service.ICustomerService;
-import org.example.securetracks.service.implement.CustomerService;
+import org.example.securetracks.service.implement.ExcelService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ import java.util.List;
 public class CustomerController {
 
     private final ICustomerService customerService;
+    private final ExcelService excelService;
 
     @PostMapping
     public ResponseEntity<CustomerMasterData> createCustomer(@RequestBody CustomerMasterDataDTO request) {
@@ -33,5 +35,10 @@ public class CustomerController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(customer);
+    }
+    @PostMapping("/import")
+    public ResponseEntity<String> importFromExcel(@RequestParam("file") MultipartFile file) {
+        excelService.importCustomersFromExcel(file);
+        return ResponseEntity.ok("Import thành công!");
     }
 }
