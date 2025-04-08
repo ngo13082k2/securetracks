@@ -1,13 +1,17 @@
 package org.example.securetracks.controller;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.example.securetracks.dto.InboundDTO;
+import org.example.securetracks.model.Inbound;
 import org.example.securetracks.service.IInboudService;
+import org.example.securetracks.service.implement.ExcelService;
 import org.example.securetracks.service.implement.InboundService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +22,8 @@ import java.util.Map;
 public class InboundController {
 
     private final IInboudService inboundService;
+    private final ExcelService excelService;
+
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getInboundsByDate(
@@ -63,15 +69,19 @@ public class InboundController {
         Map<String, Object> response = inboundService.getAllUniqueItemNamesWithTotalStatus(startDate, endDate, page, size);
         return ResponseEntity.ok(response);
     }
-    @GetMapping("/byItem")
-    public ResponseEntity<Map<String, Object>> getInboundByItem(
-            @RequestParam Long item,
+    @GetMapping("/allInventory")
+    public ResponseEntity<Map<String, Object>> getAllActiveInbound(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        Map<String, Object> response = inboundService.getAllActiveInboundByItem(item, page, size);
+        Map<String, Object> response = inboundService.getAllActiveInbound(page, size, startDate, endDate);
         return ResponseEntity.ok(response);
     }
+
+
+
     @PutMapping("/toggle-status")
         public ResponseEntity<String> toggleInboundStatusByQrCode(@RequestParam String qrCode) {
         String response = inboundService.toggleInboundStatusByQrCode(qrCode);
@@ -82,6 +92,30 @@ public class InboundController {
         InboundDTO inbound = inboundService.getInboundByQrCode(qrCode);
         return ResponseEntity.ok(inbound);
     }
+    @GetMapping("/paged")
+    public ResponseEntity<Map<String, Object>> getAllInboundsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        Map<String, Object> response = inboundService.getAllInboundsPaged(page, size, startDate, endDate);
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/export")
+    public void exportInboundsToExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            HttpServletResponse response) throws IOException {
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=inbounds.xlsx");
+
+        inboundService.exportInboundsToExcel(startDate, endDate, response.getOutputStream());
+    }
+
+
+
 
 
 }

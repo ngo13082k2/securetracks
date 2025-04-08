@@ -16,7 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,8 @@ public class InboundService implements IInboudService {
     private UserService userService;
     @Autowired
     private InboundRepository inboundRepository;
+    @Autowired
+    private ExcelService excelService;
     public Map<String, Object> getInboundsByDate(LocalDate importDate, int page, int size) {
         User currentUser = userService.getCurrentUser(); // ✅ Lấy user đang đăng nhập
         Pageable pageable = PageRequest.of(page, size, Sort.by("importDate").descending());
@@ -154,11 +159,13 @@ public class InboundService implements IInboudService {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        // Lấy danh sách itemName với tổng số lượng, chỉ lọc dữ liệu có status = ACTIVE
-        Page<Object[]> results = inboundRepository.findItemNamesWithTotalStatus(startDate, endDate, pageable);
+        // Lấy danh sách itemName với tổng số lượng cho cả status = ACTIVE và BLOCKED
+        List<InboundStatus> statuses = Arrays.asList(InboundStatus.ACTIVE, InboundStatus.BLOCKED); // Tạo danh sách các status cần lọc
 
-        // Lấy tổng toàn bộ số lượng của tất cả itemName (chỉ tính ACTIVE)
-        Long grandTotal = inboundRepository.findTotalQuantityStatus(startDate, endDate);
+        Page<Object[]> results = inboundRepository.findItemNamesWithTotalStatus(startDate, endDate, statuses, pageable);
+
+        // Lấy tổng toàn bộ số lượng cho cả status = ACTIVE và BLOCKED
+        Long grandTotal = inboundRepository.findTotalQuantityStatus(startDate, endDate, statuses);
         if (grandTotal == null) {
             grandTotal = 0L;
         }
@@ -182,26 +189,33 @@ public class InboundService implements IInboudService {
 
         return response;
     }
-    public Map<String, Object> getAllActiveInboundByItem(Long item, int page, int size) {
+
+    public Map<String, Object> getAllActiveInbound(int page, int size, LocalDate startDate, LocalDate endDate) {
         Pageable pageable = PageRequest.of(page, size);
 
-        // Lấy danh sách InBound có status = ACTIVE và item tương ứng
-        Page<Inbound> results = inboundRepository.findByItemAndStatus(item, InboundStatus.ACTIVE, pageable);
+        List<InboundStatus> statuses = Arrays.asList(InboundStatus.ACTIVE, InboundStatus.BLOCKED);
 
-        // Chuyển đổi danh sách InBound -> InboundDTO
+        Page<Inbound> results;
+
+        if (startDate != null && endDate != null) {
+            results = inboundRepository.findByStatusInAndImportDateBetween(statuses, startDate, endDate, pageable);
+        } else {
+            results = inboundRepository.findByStatusIn(statuses, pageable);
+        }
+
         List<InboundDTO> data = results.getContent().stream()
                 .map(this::mapDTO)
                 .collect(Collectors.toList());
 
-        // Tạo response trả về
         Map<String, Object> response = new HashMap<>();
-        response.put("totalItems", results.getTotalElements());
-        response.put("totalPages", results.getTotalPages());
         response.put("currentPage", page);
         response.put("data", data);
+        response.put("totalPages", results.getTotalPages());
 
         return response;
     }
+
+
     public InboundDTO getInboundByQrCode(String qrCode) {
         Inbound inbound = inboundRepository.findByQrCode(qrCode)
                 .orElseThrow(() -> new RuntimeException("Inbound not found for QR Code: " + qrCode));
@@ -217,6 +231,39 @@ public class InboundService implements IInboudService {
         inboundRepository.save(inbound);
 
         return "Inbound with QR Code: " + qrCode + " is now " + inbound.getStatus();
+    }
+    public Map<String, Object> getAllInboundsPaged(int page, int size, LocalDate startDate, LocalDate endDate) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Inbound> inboundPage;
+
+        if (startDate != null && endDate != null) {
+            inboundPage = inboundRepository.findByImportDateBetween(startDate, endDate, pageable);
+        } else {
+            inboundPage = inboundRepository.findAll(pageable);
+        }
+
+        List<InboundDTO> inboundDTOs = inboundPage.getContent().stream()
+                .map(this::mapDTO)
+                .collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("currentPage", page);
+        response.put("totalPages", inboundPage.getTotalPages());
+        response.put("data", inboundDTOs);
+
+        return response;
+    }
+    public void exportInboundsToExcel(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException {
+        List<Inbound> inbounds;
+
+        if (startDate != null && endDate != null) {
+            inbounds = inboundRepository.findByImportDateBetween(startDate, endDate);
+        } else {
+            inbounds = inboundRepository.findAll();
+        }
+
+        excelService.exportInboundsToExcel(inbounds, outputStream);
     }
 
 

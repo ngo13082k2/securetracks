@@ -18,6 +18,9 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
     Page<Inbound> findByUser(User user, Pageable pageable);
     List<Inbound> findByQrCodeIn(List<String> qrCodes);
     Page<Inbound> findByStatus(InboundStatus status, Pageable pageable);
+    Page<Inbound> findByStatusIn(List<InboundStatus> statuses, Pageable pageable);
+
+    Page<Inbound> findByStatusInAndImportDateBetween(List<InboundStatus> statuses, LocalDate startDate, LocalDate endDate, Pageable pageable);
 
     long countByStatus(InboundStatus status);
     @Query("SELECT DISTINCT i.itemName FROM Inbound i")
@@ -27,7 +30,7 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
     Page<Object[]> findItemNamesWithTotal(Pageable pageable);
     @Query("SELECT i.item, i.itemName, SUM(i.quantity) " +
             "FROM Inbound i " +
-            "WHERE (:startDate IS NULL OR :endDate IS NULL OR i.manufacturingDate BETWEEN :startDate AND :endDate) " +
+            "WHERE (:startDate IS NULL OR :endDate IS NULL OR i.importDate BETWEEN :startDate AND :endDate) " +
             "GROUP BY i.item, i.itemName")
     Page<Object[]> findItemNamesWithTotal(
             @Param("startDate") LocalDate startDate,
@@ -35,23 +38,33 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
             Pageable pageable);
 
     @Query("SELECT SUM(i.quantity) FROM Inbound i " +
-            "WHERE (:startDate IS NULL OR :endDate IS NULL OR i.manufacturingDate BETWEEN :startDate AND :endDate)")
+            "WHERE (:startDate IS NULL OR :endDate IS NULL OR i.importDate BETWEEN :startDate AND :endDate)")
     Long findTotalQuantity(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
     @Query("SELECT i.item, i.itemName, SUM(i.quantity) " +
             "FROM Inbound i " +
-            "WHERE i.status = 'ACTIVE' " +
-            "AND (:startDate IS NULL OR :endDate IS NULL OR i.manufacturingDate BETWEEN :startDate AND :endDate) " +
+            "WHERE i.status IN :statuses " +  // Sử dụng tham số trạng thái
+            "AND (:startDate IS NULL OR :endDate IS NULL OR i.importDate BETWEEN :startDate AND :endDate) " +
             "GROUP BY i.item, i.itemName")
     Page<Object[]> findItemNamesWithTotalStatus(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
+            @Param("statuses") List<InboundStatus> statuses, // Sử dụng enum InboundStatus
             Pageable pageable);
 
+
+
     @Query("SELECT SUM(i.quantity) FROM Inbound i " +
-            "WHERE i.status = 'ACTIVE' " +
-            "AND (:startDate IS NULL OR :endDate IS NULL OR i.manufacturingDate BETWEEN :startDate AND :endDate)")
-    Long findTotalQuantityStatus(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
-    Page<Inbound> findByItemAndStatus(Long item, InboundStatus status, Pageable pageable);
+            "WHERE i.status IN :statuses " + // Sử dụng tham số trạng thái
+            "AND (:startDate IS NULL OR :endDate IS NULL OR i.importDate BETWEEN :startDate AND :endDate)")
+    Long findTotalQuantityStatus(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") List<InboundStatus> statuses);  // Sử dụng enum InboundStatus
+
+
     Optional<Inbound> findByQrCode(String qrCode);
+    Page<Inbound> findAll(Pageable pageable);
+    Page<Inbound> findByImportDateBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
+    List<Inbound> findByImportDateBetween(LocalDate startDate, LocalDate endDate);
 
 }
