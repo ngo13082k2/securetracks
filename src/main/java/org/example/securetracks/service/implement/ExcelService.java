@@ -197,33 +197,37 @@ public class ExcelService {
             List<BottleQrCode> bottleQrCodes = bottleQrCodeRepository.findAll();
 
             for (BottleQrCode bottleQrCode : bottleQrCodes) {
-                // ✅ Lấy thông tin từ QR Code
-                DeliveryDetail deliveryDetail = bottleQrCode.getDeliveryDetail();
-                MasterDataDelivery masterDataDelivery = deliveryDetail.getMasterDataDelivery();
-                Delivery delivery = masterDataDelivery.getDelivery();
-                MasterData masterData = masterDataDelivery.getMasterData();
+                // Kiểm tra nếu QR Code đã tồn tại trong bảng Inbound
+                boolean exists = inboundRepository.existsByQrCode(bottleQrCode.getQrCode());
 
-                // ✅ Tạo đối tượng Inbound với thông tin từ BottleQrCode
-                Inbound inbound = Inbound.builder()
-                        .importDate(LocalDate.now())
-                        .delivery(delivery)
-                        .supplier("Shell")
-                        .item(masterData.getItem()) // Lấy từ MasterData
-                        .itemName(masterData.getName())
-                        .qrCode(bottleQrCode.getQrCode()) // Lấy QR Code từ entity
-                        .manufacturingDate(masterDataDelivery.getManufaturingDate())
-                        .expirationDate(masterDataDelivery.getExpirationDate())
-                        .batch(masterDataDelivery.getBatch())
-                        .user(currentUser)
-                        .quantity(1)
-                        .status(InboundStatus.ACTIVE)
-                        .build();
+                if (!exists) {
+                    // ✅ Lấy thông tin từ QR Code
+                    DeliveryDetail deliveryDetail = bottleQrCode.getDeliveryDetail();
+                    MasterDataDelivery masterDataDelivery = deliveryDetail.getMasterDataDelivery();
+                    Delivery delivery = masterDataDelivery.getDelivery();
+                    MasterData masterData = masterDataDelivery.getMasterData();
 
-                inbounds.add(inbound);
+                    // ✅ Tạo đối tượng Inbound với thông tin từ BottleQrCode
+                    Inbound inbound = Inbound.builder()
+                            .importDate(LocalDate.now())
+                            .delivery(delivery)
+                            .supplier("Shell")
+                            .item(masterData.getItem()) // Lấy từ MasterData
+                            .itemName(masterData.getName())
+                            .qrCode(bottleQrCode.getQrCode()) // Lấy QR Code từ entity
+                            .manufacturingDate(masterDataDelivery.getManufaturingDate())
+                            .expirationDate(masterDataDelivery.getExpirationDate())
+                            .batch(masterDataDelivery.getBatch())
+                            .user(currentUser)
+                            .quantity(1)
+                            .status(InboundStatus.ACTIVE)
+                            .build();
+
+                    inbounds.add(inbound);
+                }
             }
 
-
-            // 🔹 Lưu dữ liệu Inbound sau khi lấy từ QR Code
+// Lưu dữ liệu Inbound sau khi kiểm tra trùng lặp
             if (!inbounds.isEmpty()) {
                 inboundRepository.saveAll(inbounds);
             }

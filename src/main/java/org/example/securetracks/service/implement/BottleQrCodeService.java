@@ -37,21 +37,21 @@ public class BottleQrCodeService implements IBottleQrCodeService {
     public void generateQrCodesForAllDeliveries() {
         List<DeliveryDetail> deliveryDetails = deliveryDetailRepository.findAll();
 
-        // Lấy danh sách master_data_delivery_id đã có QR Code
+        // Kiểm tra những ID đã có QR để tránh trùng
         Set<Long> existingIds = bottleQrCodeRepository.findAll()
                 .stream()
                 .map(b -> b.getDeliveryDetail().getMasterDataDelivery().getId())
                 .collect(Collectors.toSet());
 
-        List<BottleQrCode> newQrCodes = new ArrayList<>();
+        List<BottleQrCode> batch = new ArrayList<>();
         SecureRandom random = new SecureRandom();
+        int batchSize = 500;
 
         for (DeliveryDetail detail : deliveryDetails) {
-            if (!existingIds.contains(detail.getMasterDataDelivery().getId())) { // Kiểm tra nếu chưa tạo QR
+            if (!existingIds.contains(detail.getMasterDataDelivery().getId())) {
                 for (int i = 0; i < detail.getTotalBottles(); i++) {
                     String qrCode = generateRandomQrCode(random);
 
-                    // **Tạo dữ liệu QR Code**
                     String qrData = "QR Code: " + qrCode +
                             "\nItem: " + detail.getMasterDataDelivery().getMasterData().getItem() +
                             "\nManufacturing Date: " + detail.getMasterDataDelivery().getManufaturingDate() +
@@ -62,22 +62,27 @@ public class BottleQrCodeService implements IBottleQrCodeService {
 
                     byte[] qrImage = qrGenerator.generateQRCode(qrData, 200, 200);
 
-                    // **Tạo đối tượng BottleQrCode**
                     BottleQrCode bottleQrCode = BottleQrCode.builder()
                             .qrCode(qrCode)
                             .qrCodeImage(qrImage)
                             .deliveryDetail(detail)
                             .build();
 
-                    newQrCodes.add(bottleQrCode);
+                    batch.add(bottleQrCode);
+
+                    if (batch.size() >= batchSize) {
+                        bottleQrCodeRepository.saveAll(new ArrayList<>(batch));
+                        batch.clear();
+                    }
                 }
             }
         }
 
-        if (!newQrCodes.isEmpty()) {
-            bottleQrCodeRepository.saveAll(newQrCodes);
+        if (!batch.isEmpty()) {
+            bottleQrCodeRepository.saveAll(batch);
         }
     }
+
 
 
     private String generateRandomQrCode(SecureRandom random) {
@@ -179,11 +184,9 @@ public class BottleQrCodeService implements IBottleQrCodeService {
         // Lấy user đang đăng nhập
         User currentUser = userService.getCurrentUser();
 
-        // Lấy Delivery theo ID
         Delivery delivery = deliveryRepository.findById(deliveryId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Delivery với ID: " + deliveryId));
 
-        // Kiểm tra quyền truy cập (chỉ chủ sở hữu mới được xem)
         if (!delivery.getOwner().getId().equals(currentUser.getId())) {
             throw new AccessDeniedException("Bạn không có quyền truy cập dữ liệu này!");
         }

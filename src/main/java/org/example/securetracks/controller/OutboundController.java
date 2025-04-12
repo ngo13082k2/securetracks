@@ -74,15 +74,9 @@ public class OutboundController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        List<OutboundDTO> dtos = outboundService.getAllOutboundsPaged(page, size, startDate, endDate);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("currentPage", page);
-        response.put("data", dtos);
-        response.put("size", size);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(outboundService.getAllOutboundsPaged(page, size, startDate, endDate));
     }
+
     @GetMapping("/export")
     public void exportOutboundsToExcel(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

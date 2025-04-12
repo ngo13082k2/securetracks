@@ -18,16 +18,9 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
     Page<Inbound> findByUser(User user, Pageable pageable);
     List<Inbound> findByQrCodeIn(List<String> qrCodes);
     Page<Inbound> findByStatus(InboundStatus status, Pageable pageable);
-    Page<Inbound> findByStatusIn(List<InboundStatus> statuses, Pageable pageable);
-
-    Page<Inbound> findByStatusInAndImportDateBetween(List<InboundStatus> statuses, LocalDate startDate, LocalDate endDate, Pageable pageable);
+    List<Inbound> findByImportDateBetween(LocalDate startDate, LocalDate endDate);
 
     long countByStatus(InboundStatus status);
-    @Query("SELECT DISTINCT i.itemName FROM Inbound i")
-    List<String> findDistinctItemNames();
-    Page<Inbound> findByItemNameContainingIgnoreCaseAndStatus(String itemName, InboundStatus status, Pageable pageable);
-    @Query("SELECT i.itemName, COUNT(i) FROM Inbound i GROUP BY i.itemName")
-    Page<Object[]> findItemNamesWithTotal(Pageable pageable);
     @Query("SELECT i.item, i.itemName, SUM(i.quantity) " +
             "FROM Inbound i " +
             "WHERE (:startDate IS NULL OR :endDate IS NULL OR i.importDate BETWEEN :startDate AND :endDate) " +
@@ -40,31 +33,48 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
     @Query("SELECT SUM(i.quantity) FROM Inbound i " +
             "WHERE (:startDate IS NULL OR :endDate IS NULL OR i.importDate BETWEEN :startDate AND :endDate)")
     Long findTotalQuantity(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
-    @Query("SELECT i.item, i.itemName, SUM(i.quantity) " +
-            "FROM Inbound i " +
-            "WHERE i.status IN :statuses " +  // Sử dụng tham số trạng thái
-            "AND (:startDate IS NULL OR :endDate IS NULL OR i.importDate BETWEEN :startDate AND :endDate) " +
-            "GROUP BY i.item, i.itemName")
-    Page<Object[]> findItemNamesWithTotalStatus(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
-            @Param("statuses") List<InboundStatus> statuses, // Sử dụng enum InboundStatus
-            Pageable pageable);
 
-
-
-    @Query("SELECT SUM(i.quantity) FROM Inbound i " +
-            "WHERE i.status IN :statuses " + // Sử dụng tham số trạng thái
-            "AND (:startDate IS NULL OR :endDate IS NULL OR i.importDate BETWEEN :startDate AND :endDate)")
-    Long findTotalQuantityStatus(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
-            @Param("statuses") List<InboundStatus> statuses);  // Sử dụng enum InboundStatus
 
 
     Optional<Inbound> findByQrCode(String qrCode);
     Page<Inbound> findAll(Pageable pageable);
     Page<Inbound> findByImportDateBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
-    List<Inbound> findByImportDateBetween(LocalDate startDate, LocalDate endDate);
+    @Query("""
+    SELECT i.item, i.itemName, SUM(i.quantity)
+    FROM Inbound i
+    WHERE i.status IN :statuses AND i.importDate <= :targetDate
+    GROUP BY i.item, i.itemName
+    ORDER BY i.itemName ASC
+    """)
+    Page<Object[]> findItemStockAsOfDate(@Param("targetDate") LocalDate targetDate,
+                                         @Param("statuses") List<InboundStatus> statuses,
+                                         Pageable pageable);
 
+    @Query("""
+    SELECT SUM(i.quantity)
+    FROM Inbound i
+    WHERE i.status IN :statuses AND i.importDate <= :targetDate
+    """)
+    Long findGrandTotalAsOfDate(@Param("targetDate") LocalDate targetDate,
+                                @Param("statuses") List<InboundStatus> statuses);
+    @Query("""
+    SELECT i FROM Inbound i
+    WHERE i.status IN :statuses
+    AND (:inventoryDate IS NULL OR i.importDate <= :inventoryDate)
+""")
+    Page<Inbound> findInventoryByStatusAndDate(
+            @Param("statuses") List<InboundStatus> statuses,
+            @Param("inventoryDate") LocalDate inventoryDate,
+            Pageable pageable);
+    @Query("""
+    SELECT i FROM Inbound i
+    WHERE i.status IN :statuses
+    AND (:inventoryDate IS NULL OR i.importDate <= :inventoryDate)
+""")
+    List<Inbound> findAllByStatusAndImportDateBeforeOrEqual(
+            @Param("statuses") List<InboundStatus> statuses,
+            @Param("inventoryDate") LocalDate inventoryDate);
+
+
+    boolean existsByQrCode(String qrCode);
 }

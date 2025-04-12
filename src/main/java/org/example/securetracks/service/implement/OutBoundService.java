@@ -127,7 +127,7 @@ public class OutBoundService implements IOutBoundService {
 
         return response;
     }
-    public List<OutboundDTO> getAllOutboundsPaged(int page, int size, LocalDate startDate, LocalDate endDate) {
+    public Map<String, Object> getAllOutboundsPaged(int page, int size, LocalDate startDate, LocalDate endDate) {
         Pageable pageable = PageRequest.of(page, size);
         Page<OutBound> outboundPage;
 
@@ -137,10 +137,21 @@ public class OutBoundService implements IOutBoundService {
             outboundPage = outboundRepository.findAll(pageable);
         }
 
-        return outboundPage.getContent().stream()
+        List<OutboundDTO> dtos = outboundPage.getContent().stream()
                 .map(this::mapDTO)
                 .collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("currentPage", page);
+        response.put("data", dtos);
+        response.put("size", size);
+        response.put("totalPages", outboundPage.getTotalPages());
+        response.put("totalElements", outboundPage.getTotalElements());
+        response.put("isLast", outboundPage.isLast());
+
+        return response;
     }
+
     public void exportOutboundsToExcel(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException {
         List<OutBound> outbounds;
 

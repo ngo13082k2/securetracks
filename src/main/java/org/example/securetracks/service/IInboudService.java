@@ -15,9 +15,10 @@ public interface IInboudService {
     Map<String, Object> getActiveInbounds(int page, int pageSize);
     Map<String, Object> getAllInboundsPaged(int page, int size, LocalDate startDate, LocalDate endDate);
     Map<String, Object> getAllUniqueItemNamesWithTotal(LocalDate startDate, LocalDate endDate, int page, int size);
-    Map<String, Object> getAllUniqueItemNamesWithTotalStatus(LocalDate startDate, LocalDate endDate, int page, int size);
-    Map<String, Object> getAllActiveInbound(int page, int size, LocalDate startDate, LocalDate endDate);
+    Map<String, Object> getAllUniqueItemNamesWithTotalStatus(LocalDate targetDate, int page, int size);
+    Map<String, Object> getAllActiveInbound(int page, int size, LocalDate inventoryDate);
     InboundDTO getInboundByQrCode(String qrCode);
     String toggleInboundStatusByQrCode(String qrCode);
-    void exportInboundsToExcel(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException;
+    void exportInboundsToExcel(LocalDate inventoryDate, OutputStream outputStream) throws IOException ;
+    void exportExcel(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException;
 }

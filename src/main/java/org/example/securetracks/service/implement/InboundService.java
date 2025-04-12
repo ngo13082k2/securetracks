@@ -155,22 +155,24 @@ public class InboundService implements IInboudService {
 
 
 
-    public Map<String, Object> getAllUniqueItemNamesWithTotalStatus(LocalDate startDate, LocalDate endDate, int page, int size) {
-
+    public Map<String, Object> getAllUniqueItemNamesWithTotalStatus(LocalDate targetDate, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
+        List<InboundStatus> statuses = Arrays.asList(InboundStatus.ACTIVE, InboundStatus.BLOCKED);
 
-        // Lấy danh sách itemName với tổng số lượng cho cả status = ACTIVE và BLOCKED
-        List<InboundStatus> statuses = Arrays.asList(InboundStatus.ACTIVE, InboundStatus.BLOCKED); // Tạo danh sách các status cần lọc
+        // Nếu không có ngày, lấy toàn bộ
+        Page<Object[]> results;
+        Long grandTotal;
 
-        Page<Object[]> results = inboundRepository.findItemNamesWithTotalStatus(startDate, endDate, statuses, pageable);
-
-        // Lấy tổng toàn bộ số lượng cho cả status = ACTIVE và BLOCKED
-        Long grandTotal = inboundRepository.findTotalQuantityStatus(startDate, endDate, statuses);
-        if (grandTotal == null) {
-            grandTotal = 0L;
+        if (targetDate != null) {
+            results = inboundRepository.findItemStockAsOfDate(targetDate, statuses, pageable);
+            grandTotal = inboundRepository.findGrandTotalAsOfDate(targetDate, statuses);
+        } else {
+            results = inboundRepository.findItemStockAsOfDate(LocalDate.now().plusYears(100), statuses, pageable);
+            grandTotal = inboundRepository.findGrandTotalAsOfDate(LocalDate.now().plusYears(100), statuses);
         }
 
-        // Xử lý danh sách trả về
+        if (grandTotal == null) grandTotal = 0L;
+
         List<Map<String, Object>> data = results.getContent().stream().map(obj -> {
             Map<String, Object> map = new HashMap<>();
             map.put("item", obj[0]);
@@ -179,29 +181,22 @@ public class InboundService implements IInboudService {
             return map;
         }).collect(Collectors.toList());
 
-        // Trả về kết quả
         Map<String, Object> response = new HashMap<>();
         response.put("totalItems", results.getTotalElements());
         response.put("totalPages", results.getTotalPages());
         response.put("currentPage", page);
-        response.put("grandTotal", grandTotal); // ✅ Tổng toàn bộ số lượng
+        response.put("grandTotal", grandTotal);
         response.put("data", data);
 
         return response;
     }
 
-    public Map<String, Object> getAllActiveInbound(int page, int size, LocalDate startDate, LocalDate endDate) {
-        Pageable pageable = PageRequest.of(page, size);
 
+    public Map<String, Object> getAllActiveInbound(int page, int size, LocalDate inventoryDate) {
+        Pageable pageable = PageRequest.of(page, size);
         List<InboundStatus> statuses = Arrays.asList(InboundStatus.ACTIVE, InboundStatus.BLOCKED);
 
-        Page<Inbound> results;
-
-        if (startDate != null && endDate != null) {
-            results = inboundRepository.findByStatusInAndImportDateBetween(statuses, startDate, endDate, pageable);
-        } else {
-            results = inboundRepository.findByStatusIn(statuses, pageable);
-        }
+        Page<Inbound> results = inboundRepository.findInventoryByStatusAndDate(statuses, inventoryDate, pageable);
 
         List<InboundDTO> data = results.getContent().stream()
                 .map(this::mapDTO)
@@ -209,11 +204,12 @@ public class InboundService implements IInboudService {
 
         Map<String, Object> response = new HashMap<>();
         response.put("currentPage", page);
-        response.put("data", data);
         response.put("totalPages", results.getTotalPages());
+        response.put("data", data);
 
         return response;
     }
+
 
 
     public InboundDTO getInboundByQrCode(String qrCode) {
@@ -254,7 +250,21 @@ public class InboundService implements IInboudService {
 
         return response;
     }
-    public void exportInboundsToExcel(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException {
+
+    public void exportInboundsToExcel(LocalDate inventoryDate, OutputStream outputStream) throws IOException {
+        List<Inbound> inbounds;
+        List<InboundStatus> statuses = Arrays.asList(InboundStatus.ACTIVE, InboundStatus.BLOCKED);
+
+        if (inventoryDate != null) {
+            inbounds = inboundRepository.findAllByStatusAndImportDateBeforeOrEqual(statuses, inventoryDate);
+        } else {
+            inbounds = inboundRepository.findAll();
+        }
+
+        excelService.exportInboundsToExcel(inbounds, outputStream);
+    }
+
+    public void exportExcel(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException {
         List<Inbound> inbounds;
 
         if (startDate != null && endDate != null) {
