@@ -318,7 +318,7 @@ public class ExcelService {
 
         Row header = sheet.createRow(0);
         String[] headers = {
-                "ID", "Item", "Item Name", "Supplier", "QR Code", "Import Date",
+                "STT", "Item", "Item Name", "Supplier", "QR Code", "Import Date",
                 "Manufacturing Date", "Expiration Date", "Batch", "Status"
         };
 
@@ -329,7 +329,7 @@ public class ExcelService {
         int rowIdx = 1;
         for (Inbound inbound : inbounds) {
             Row row = sheet.createRow(rowIdx++);
-            row.createCell(0).setCellValue(inbound.getId());
+            row.createCell(0).setCellValue(rowIdx - 1);
             row.createCell(1).setCellValue(inbound.getItem());
             row.createCell(2).setCellValue(inbound.getItemName());
             row.createCell(3).setCellValue(inbound.getSupplier());
@@ -350,7 +350,7 @@ public class ExcelService {
 
         Row header = sheet.createRow(0);
         String[] headers = {
-                "ID", "Sale Date", "Order ID", "Customer Name", "Phone Number",
+                "STT", "Sale Date", "Order ID", "Customer Name", "Phone Number",
                 "QR Code", "Item", "Item Name", "Manufacturing Date", "Expiration Date", "Batch", "Dealer"
         };
 
@@ -361,7 +361,7 @@ public class ExcelService {
         int rowIdx = 1;
         for (OutBound out : outbounds) {
             Row row = sheet.createRow(rowIdx++);
-            row.createCell(0).setCellValue(out.getId());
+            row.createCell(0).setCellValue(rowIdx - 1);
             row.createCell(1).setCellValue(out.getSaleDate() != null ? out.getSaleDate().toString() : "");
             row.createCell(2).setCellValue(out.getOrderId());
             row.createCell(3).setCellValue(out.getCustomerName());
