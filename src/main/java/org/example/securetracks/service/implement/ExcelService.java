@@ -344,6 +344,40 @@ public class ExcelService {
         workbook.write(outputStream);
         workbook.close();
     }
+    public void exportInboundsToExcelForBoss(List<Inbound> inbounds, OutputStream outputStream) throws IOException {
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Inbounds");
+
+        Row header = sheet.createRow(0);
+        String[] headers = {
+                "STT", "Item", "Item Name", "Supplier", "QR Code", "Import Date",
+                "Manufacturing Date", "Expiration Date", "Batch", "Status"
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            header.createCell(i).setCellValue(headers[i]);
+        }
+
+        int rowIdx = 1;
+        for (Inbound inbound : inbounds) {
+            Row row = sheet.createRow(rowIdx++);
+            row.createCell(0).setCellValue(rowIdx - 1);
+            row.createCell(1).setCellValue(inbound.getItem());
+            row.createCell(2).setCellValue(inbound.getItemName());
+            row.createCell(3).setCellValue(inbound.getSupplier());
+            row.createCell(4).setCellValue(inbound.getQrCode());
+            row.createCell(5).setCellValue(inbound.getImportDate().toString());
+            row.createCell(6).setCellValue(inbound.getManufacturingDate().toString());
+            row.createCell(7).setCellValue(inbound.getExpirationDate().toString());
+            row.createCell(8).setCellValue(inbound.getBatch());
+            row.createCell(9).setCellValue(inbound.getUser().getUsername());
+
+            row.createCell(10).setCellValue(inbound.getStatus().toString());
+        }
+
+        workbook.write(outputStream);
+        workbook.close();
+    }
     public void exportOutboundsToExcel(List<OutBound> outbounds, OutputStream outputStream) throws IOException {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Outbounds");
