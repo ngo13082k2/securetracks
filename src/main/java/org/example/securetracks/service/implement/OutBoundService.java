@@ -6,6 +6,7 @@ import org.example.securetracks.dto.OutboundDetailDTO;
 import org.example.securetracks.model.OutBound;
 import org.example.securetracks.model.User;
 import org.example.securetracks.repository.OutBoundRepository;
+import org.example.securetracks.repository.UserRepository;
 import org.example.securetracks.service.IOutBoundService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
@@ -30,6 +31,8 @@ public class OutBoundService implements IOutBoundService {
     private UserService userService;
     @Autowired
     private ExcelService excelService;
+    @Autowired
+    private UserRepository userRepository;
     // Lấy danh sách Outbound theo ngày hoặc tất cả nếu không có ngày
     public Map<String, Object> getOutboundsByDate(LocalDate saleDate, int page, int size) {
         // ✅ Lấy User đang đăng nhập
@@ -70,23 +73,18 @@ public class OutBoundService implements IOutBoundService {
         return response;
     }
 
-    public Map<String, Object> getAllUniqueItemNamesWithTotal(LocalDate startDate, LocalDate endDate, int page, int size) {
+    public Map<String, Object> getAllUniqueItemNamesWithTotal(LocalDate startDate, LocalDate endDate, int page, int size, String username) {
         Pageable pageable = PageRequest.of(page, size);
 
-        // Lấy tổng số lượng của từng itemName có phân trang
-        Page<Object[]> results = outboundRepository.findItemNamesWithTotal(startDate, endDate, pageable);
-
-        // Lấy tổng số lượng của tất cả itemName (không phân trang)
-        Long totalQuantity = outboundRepository.findTotalQuantity(startDate, endDate);
-        if (totalQuantity == null) {
-            totalQuantity = 0L;
-        }
+        Page<Object[]> results = outboundRepository.findItemNamesWithTotal(startDate, endDate, username, pageable);
+        Long totalQuantity = outboundRepository.findTotalQuantity(startDate, endDate, username);
+        if (totalQuantity == null) totalQuantity = 0L;
 
         List<Map<String, Object>> data = results.getContent().stream().map(obj -> {
             Map<String, Object> map = new HashMap<>();
-            map.put("item", obj[0]);  // obj[0]: item (Long hoặc Integer)
-            map.put("itemName", obj[1]);  // obj[1]: itemName (String)
-            map.put("total", ((Number) obj[2]).intValue());  // obj[2]: tổng số lượng của itemName (có phân trang)
+            map.put("item", obj[0]);
+            map.put("itemName", obj[1]);
+            map.put("total", ((Number) obj[2]).intValue());
             return map;
         }).collect(Collectors.toList());
 
@@ -94,11 +92,12 @@ public class OutBoundService implements IOutBoundService {
         response.put("totalItems", results.getTotalElements());
         response.put("totalPages", results.getTotalPages());
         response.put("currentPage", page);
-        response.put("grandTotal", totalQuantity); // ✅ Tổng tất cả số lượng của mọi itemName
+        response.put("grandTotal", totalQuantity);
         response.put("data", data);
 
         return response;
     }
+
 
     public Map<String, Object> getOutboundsByItem(Long itemId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -127,14 +126,27 @@ public class OutBoundService implements IOutBoundService {
 
         return response;
     }
-    public Map<String, Object> getAllOutboundsPaged(int page, int size, LocalDate startDate, LocalDate endDate) {
+    public Map<String, Object> getAllOutboundsPaged(int page, int size, LocalDate startDate, LocalDate endDate, String username) {
         Pageable pageable = PageRequest.of(page, size);
         Page<OutBound> outboundPage;
 
-        if (startDate != null && endDate != null) {
-            outboundPage = outboundRepository.findBySaleDateBetween(startDate, endDate, pageable);
+        if (username != null && !username.trim().isEmpty()) {
+            boolean exists = userRepository.existsByUsername(username);
+            if (!exists) {
+                throw new IllegalArgumentException("Không tìm thấy username: " + username);
+            }
+
+            if (startDate != null && endDate != null) {
+                outboundPage = outboundRepository.findByUserUsernameAndSaleDateBetween(username, startDate, endDate, pageable);
+            } else {
+                outboundPage = outboundRepository.findByUserUsername(username, pageable);
+            }
         } else {
-            outboundPage = outboundRepository.findAll(pageable);
+            if (startDate != null && endDate != null) {
+                outboundPage = outboundRepository.findBySaleDateBetween(startDate, endDate, pageable);
+            } else {
+                outboundPage = outboundRepository.findAll(pageable);
+            }
         }
 
         List<OutboundDTO> dtos = outboundPage.getContent().stream()
@@ -152,19 +164,97 @@ public class OutBoundService implements IOutBoundService {
         return response;
     }
 
-    public void exportOutboundsToExcel(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException {
-        List<OutBound> outbounds;
+    public Map<String, Object> getAllOutboundsPagedByUser(int page, int size, LocalDate startDate, LocalDate endDate) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<OutBound> outboundPage;
+        Long userId = userService.getCurrentUser().getId();
 
         if (startDate != null && endDate != null) {
-            outbounds = outboundRepository.findBySaleDateBetween(startDate, endDate);
+            outboundPage = outboundRepository.findBySaleDateBetweenAndUserId(startDate, endDate, userId, pageable);
         } else {
-            outbounds = outboundRepository.findAll();
+            outboundPage = outboundRepository.findByUserId(userId, pageable);
+        }
+
+        List<OutboundDTO> dtos = outboundPage.getContent().stream()
+                .map(this::mapDTO)
+                .collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("currentPage", page);
+        response.put("data", dtos);
+        response.put("size", size);
+        response.put("totalPages", outboundPage.getTotalPages());
+        response.put("totalElements", outboundPage.getTotalElements());
+        response.put("isLast", outboundPage.isLast());
+
+        return response;
+    }
+    public void exportOutboundsToExcel(LocalDate startDate, LocalDate endDate, String username, OutputStream outputStream) throws IOException {
+        List<OutBound> outbounds;
+
+        if (username != null && !username.trim().isEmpty()) {
+            boolean exists = userRepository.existsByUsername(username);
+            if (!exists) {
+                throw new IllegalArgumentException("Không tìm thấy username: " + username);
+            }
+
+            if (startDate != null && endDate != null) {
+                outbounds = outboundRepository.findByUserUsernameAndSaleDateBetween(username, startDate, endDate);
+            } else {
+                outbounds = outboundRepository.findByUserUsername(username);
+            }
+        } else {
+            if (startDate != null && endDate != null) {
+                outbounds = outboundRepository.findBySaleDateBetween(startDate, endDate);
+            } else {
+                outbounds = outboundRepository.findAll();
+            }
         }
 
         excelService.exportOutboundsToExcel(outbounds, outputStream);
     }
 
+    public Map<String, Object> getAllUniqueItemNamesWithTotalByUser(LocalDate startDate, LocalDate endDate, int page, int size) {
+        Long userId = userService.getCurrentUser().getId();  // ✅ lấy ID của user đang đăng nhập
 
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Object[]> results = outboundRepository.findItemNamesWithTotalByUser(startDate, endDate, userId, pageable);
+        Long totalQuantity = outboundRepository.findTotalQuantityByUser(startDate, endDate, userId);
+
+        if (totalQuantity == null) totalQuantity = 0L;
+
+        List<Map<String, Object>> data = results.getContent().stream().map(obj -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("item", obj[0]);
+            map.put("itemName", obj[1]);
+            map.put("total", ((Number) obj[2]).intValue());
+            return map;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("totalItems", results.getTotalElements());
+        response.put("totalPages", results.getTotalPages());
+        response.put("currentPage", page);
+        response.put("grandTotal", totalQuantity);
+        response.put("data", data);
+
+        return response;
+    }
+    public void exportOutboundsToExcelByUser(LocalDate startDate, LocalDate endDate, OutputStream outputStream) throws IOException {
+        List<OutBound> outbounds;
+        Long userId = userService.getCurrentUser().getId();
+
+        if (startDate != null && endDate != null) {
+            outbounds = outboundRepository.findBySaleDateBetweenAndUserId(startDate, endDate, userId);
+        } else {
+            outbounds = outboundRepository.findAll().stream()
+                    .filter(o -> o.getUser().getId().equals(userId))
+                    .collect(Collectors.toList());
+        }
+
+        excelService.exportOutboundsToExcel(outbounds, outputStream);
+    }
 
     private OutboundDTO mapDTO(OutBound outBound) {
         return OutboundDTO.builder()

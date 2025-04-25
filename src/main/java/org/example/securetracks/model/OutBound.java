@@ -50,4 +50,7 @@ public class OutBound {
 
     @Column(name = "quantity", nullable = false)
     private int quantity;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }
