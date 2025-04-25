@@ -4,10 +4,8 @@ import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.example.securetracks.dto.InboundDTO;
-import org.example.securetracks.model.Inbound;
 import org.example.securetracks.service.IInboudService;
 import org.example.securetracks.service.implement.ExcelService;
-import org.example.securetracks.service.implement.InboundService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -53,10 +50,11 @@ public class InboundController {
     public ResponseEntity<Map<String, Object>> getInboundSummary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String username,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Map<String, Object> response = inboundService.getAllUniqueItemNamesWithTotal(startDate, endDate, page, size);
+        Map<String, Object> response = inboundService.getAllUniqueItemNamesWithTotal(startDate, endDate, page, size, username);
         return ResponseEntity.ok(response);
     }
 
@@ -64,22 +62,45 @@ public class InboundController {
     @GetMapping("/stock")
     public ResponseEntity<Map<String, Object>> getStockAsOfDate(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String username,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Map<String, Object> response = inboundService.getAllUniqueItemNamesWithTotalStatus(date, page, size);
+        Map<String, Object> response = inboundService.getAllUniqueItemNamesWithTotalStatus(date, username, page, size);
         return ResponseEntity.ok(response);
     }
+
+
+    @GetMapping("/stockByUser")
+    public ResponseEntity<Map<String, Object>> getStockAsOfDateByUser(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Map<String, Object> response = inboundService.getAllUniqueItemNamesWithTotalStatusByUser(date, page, size);
+        return ResponseEntity.ok(response);
+}
     @GetMapping("/allInventory")
     public ResponseEntity<Map<String, Object>> getAllActiveInbound(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inventoryDate,
+            @RequestParam(required = false) String username,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Map<String, Object> result = inboundService.getAllActiveInbound(page, size, inventoryDate, username);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/allInventoryByUser")
+    public ResponseEntity<Map<String, Object>> getAllActiveInboundByUser(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inventoryDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Map<String, Object> result = inboundService.getAllActiveInbound(page, size, inventoryDate);
+        // Gọi service mà không cần truyền userId từ controller
+        Map<String, Object> result = inboundService.getAllActiveInboundByUser(page, size, inventoryDate);
         return ResponseEntity.ok(result);
     }
-
 
 
     @PutMapping("/toggle-status")
@@ -97,29 +118,54 @@ public class InboundController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String username) {
+
+        Map<String, Object> response = inboundService.getAllInboundsPaged(page, size, startDate, endDate, username);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/DetailpagedByUser")
+    public ResponseEntity<Map<String, Object>> getAllInboundsPagedByUser(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        Map<String, Object> response = inboundService.getAllInboundsPaged(page, size, startDate, endDate);
+        Map<String, Object> response = inboundService.getAllInboundsPagedByUser(page, size, startDate, endDate);
         return ResponseEntity.ok(response);
     }
     @GetMapping("/exportInventory")
     public void exportInventoryToExcel(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inventoryDate,
+            @RequestParam(required = false) String username,
             HttpServletResponse response) throws IOException {
 
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=inventory.xlsx");
 
         OutputStream outputStream = response.getOutputStream();
-        inboundService.exportInboundsToExcel(inventoryDate, outputStream);
+        inboundService.exportInboundsToExcel(inventoryDate, username, outputStream);
         outputStream.flush();
-
-
     }
+
+    @GetMapping("/exportInventoryByUser")
+    public void exportInventoryToExcelByUser(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inventoryDate,
+            HttpServletResponse response) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=inventory.xlsx");
+
+        OutputStream outputStream = response.getOutputStream();
+        inboundService.exportInboundsToExcelByUser(inventoryDate, outputStream);
+        outputStream.flush();
+    }
+
     @GetMapping("/exportInbound")
     public void exportInboundsToExcel(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String username,
             HttpServletResponse response) {
 
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -127,11 +173,37 @@ public class InboundController {
         response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
 
         try (ServletOutputStream outputStream = response.getOutputStream()) {
-            inboundService.exportExcel(startDate, endDate, outputStream);
+            inboundService.exportExcel(startDate, endDate, username, outputStream);
             outputStream.flush();
         } catch (IOException e) {
             throw new RuntimeException("Lỗi khi xuất Excel", e);
         }
+    }
+
+    @GetMapping("/exportInboundByUser")
+    public void exportInboundsToExcelByUser(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            HttpServletResponse response) {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        String fileName = "inbounds_" + LocalDate.now() + ".xlsx";
+        response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
+
+        try (ServletOutputStream outputStream = response.getOutputStream()) {
+            inboundService.exportExcelByUser(startDate, endDate, outputStream);
+            outputStream.flush();
+        } catch (IOException e) {
+            throw new RuntimeException("Lỗi khi xuất Excel", e);
+        }
+    }
+
+    @GetMapping("/summary-by-user")
+    public ResponseEntity<?> getSummaryByUser(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(inboundService.getAllUniqueItemNamesWithTotalByUser(startDate, endDate, page, size));
     }
 
 }

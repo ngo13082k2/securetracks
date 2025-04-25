@@ -18,4 +18,5 @@ public class InboundDTO {
     private LocalDate expirationDate;
     private String batch;
     private String status;
+    private String userName;
 }
