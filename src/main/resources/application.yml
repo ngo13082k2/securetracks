@@ -3,9 +3,7 @@ server:
 
 spring:
   datasource:
-#    url: jdbc:mysql://securetracks.mysql.database.azure.com:3306/securetracks
-#    username: securetracks
-#    password: Ngo098867915712nn@
+
     url: jdbc:mysql://localhost:3306/securetrack
     username: root
     password: 12345
